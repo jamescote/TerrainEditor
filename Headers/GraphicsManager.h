@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "Camera.h"
 #include "HypoCycloid.h"
+#include "NURBS.h"
 
 // Forward Declarations
 class ShaderManager;
@@ -61,6 +62,19 @@ public:
 	void modifyHypoAnim() { m_pHypoCyc->cycleAnimationModes(); }
 	void toggleHypoAnim() { m_pHypoCyc->toggleAnimation(); }
 
+	// NURBS Manipulation Functions
+	void controlPoint( float fX, float fY );
+	void dropControlPoint() { m_pNurbs->releaseSelection(); }
+	void moveControlPoint( float fX, float fY );
+	void undoControlPoint() { m_pNurbs->undoAdd(); }
+	void modifyOrder( int iDirection ) { m_pNurbs->modifyOrder( iDirection ); }
+	void advanceNurbMan() { m_pNurbs->advanceNurbMan(); }
+	void retractNurbMan() { m_pNurbs->retractNurbMan(); }
+	void incrementU() { m_pNurbs->modifyU( 1 ); }
+	void decrementU() { m_pNurbs->modifyU( -1 ); }
+	void modifyWeight( float fX, float fY, float fVal );
+	void toggleAffine() { m_pNurbs->toggleDrawAffine(); }
+
 private:
 	// For Singleton Implementation
 	GraphicsManager(GLFWwindow* rWindow); 
@@ -76,6 +90,7 @@ private:
 
 	// Camera
 	Camera* m_pCamera;
+	vec3 getIntersection( float fX, float fY );
 
 	// Render Functions
 	void RenderScene();
@@ -85,5 +100,6 @@ private:
 	ShaderManager* m_pShaderMngr;
 	EnvironmentManager* m_pEnvMngr;
 	HypoCycloid* m_pHypoCyc;	// Modelling Design
+	NURBS* m_pNurbs;
 };
 

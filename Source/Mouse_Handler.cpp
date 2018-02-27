@@ -36,6 +36,9 @@ void Mouse_Handler::updateMouse(float fX, float fY)
 		m_pGpxMngr->rotateCamera(m_pInitialPos - vec2(fX, fY));
 	}
 
+	if ( m_bTranslateFlag )
+		m_pGpxMngr->moveControlPoint( fX, fY );
+
 	// Set new current position
 	m_pInitialPos.x = fX;
 	m_pInitialPos.y = fY;
@@ -43,5 +46,6 @@ void Mouse_Handler::updateMouse(float fX, float fY)
 
 void Mouse_Handler::mouseZoom(float fZoomVal)
 {
-	m_pGpxMngr->zoomCamera(fZoomVal);
+	//m_pGpxMngr->zoomCamera(fZoomVal);
+	m_pGpxMngr->modifyWeight( m_pInitialPos.x, m_pInitialPos.y, fZoomVal );
 }

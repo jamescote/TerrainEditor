@@ -52,6 +52,10 @@ Plane::~Plane()
 {
 	if ( nullptr != m_pEdgeBuffer )
 		delete m_pEdgeBuffer;
+
+	glDeleteBuffers( 1, &m_iNormalBuffer );
+	glDeleteBuffers( 1, &m_iVertexBuffer );
+	glDeleteVertexArrays( 1, &m_iVertexArray );
 }
 
 // Overridden Debug Output

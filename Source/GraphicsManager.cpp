@@ -22,6 +22,7 @@ GraphicsManager::GraphicsManager(GLFWwindow* rWindow)
 	m_pShaderMngr	= ShaderManager::getInstance();
 	m_pEnvMngr		= EnvironmentManager::getInstance();
 	m_pHypoCyc		= new HypoCycloid();
+	m_pNurbs		= new NURBS();
 
 	m_pWindow = rWindow;
 	int iHeight, iWidth;
@@ -65,6 +66,9 @@ GraphicsManager::~GraphicsManager()
 	if ( nullptr != m_pHypoCyc )
 		delete m_pHypoCyc;
 
+	if ( nullptr != m_pNurbs )
+		delete m_pNurbs;
+
 	glDeleteBuffers( 1, &m_pVertexBuffer );
 	glDeleteVertexArrays( 1, &m_pVertexArray );
 }
@@ -106,7 +110,7 @@ void GraphicsManager::RenderScene()
 
 	//renderAxis();
 	m_pEnvMngr->renderEnvironment( vCamLookAt );
-	m_pHypoCyc->draw( );
+	m_pNurbs->drawNURBS();
 	glDisable(GL_DEPTH_TEST);
 }
 
@@ -159,6 +163,61 @@ void GraphicsManager::rotateCamera(vec2 pDelta)
 void GraphicsManager::zoomCamera(float fDelta)
 {
 	m_pCamera->zoom(fDelta);
+}
+
+// Calculates an intersection given screen coordinates.
+vec3 GraphicsManager::getIntersection( float fX, float fY )
+{
+	// Local Variables
+	vec3 vRay = m_pCamera->getRay( fX, fY );
+	vec3 vNormal = vec3( 0.0, 0.0, -1.0 ); // normal of xy-plane
+	vec3 vCameraPos = m_pCamera->getCameraWorldPos();
+	vec3 vPos;
+	vec3 vIntersection = vec3( -1.0f );
+	float fT = dot( vRay, vNormal );
+
+	// Calculate Intersection
+	if ( fT > FLT_EPSILON || fT < -FLT_EPSILON )
+	{
+		// Is intersecting.
+		fT = -(dot( vCameraPos, vNormal ) / fT);
+
+		// Not behind camera.
+		if ( fT >= 0 )
+			vIntersection = vCameraPos + (fT*vRay);
+	}
+
+	return vIntersection;
+}
+
+
+// use intersection point as a control point for the nurbs curve.
+void GraphicsManager::controlPoint( float fX, float fY )
+{
+	vec3 vIntersection = getIntersection( fX, fY );
+
+	if( vec3( -1.0 ) != vIntersection )
+			m_pNurbs->selectAdd( vIntersection );
+}
+
+// move Control Point to intersected position.
+void GraphicsManager::moveControlPoint( float fX, float fY )
+{
+	// Get Intersection using ray trace.
+	vec3 vIntersection = getIntersection( fX, fY );
+
+	if ( vec3( -1.0 ) != vIntersection )
+		m_pNurbs->moveTarget( vIntersection );
+}
+
+void GraphicsManager::modifyWeight( float fX, float fY, float fVal )
+{
+	vec3 vIntersection = getIntersection( fX, fY );
+
+	if ( vec3( -1.0 ) == vIntersection || 
+		 !m_pNurbs->modifyWeight( vIntersection, fVal ) )
+			zoomCamera( fVal );
+	
 }
 
 /*******************************************************************************\

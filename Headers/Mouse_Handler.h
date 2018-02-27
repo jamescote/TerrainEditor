@@ -10,8 +10,17 @@ public:
 	void updateMouse(float fX, float fY);
 
 	// Flag the Mouse for Rotations or Translations (Cannot do both at the same time).
-	void mouseTStart() { m_bTranslateFlag = !m_bRotateFlag; }
-	void mouseTEnd() { m_bTranslateFlag = false; }
+	void mouseTStart() 
+	{ 
+		m_bTranslateFlag = !m_bRotateFlag;
+		if ( m_bTranslateFlag )
+			m_pGpxMngr->controlPoint( m_pInitialPos.x, m_pInitialPos.y );
+	}
+	void mouseTEnd() 
+	{ 
+		m_bTranslateFlag = false;
+		m_pGpxMngr->dropControlPoint();
+	}
 	void mouseRStart() { m_bRotateFlag = !m_bTranslateFlag; };
 	void mouseREnd() { m_bRotateFlag = false; }
 

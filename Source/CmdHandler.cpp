@@ -231,6 +231,7 @@ void CmdHandler::handleKeyBoardInput(int cKey, int iAction, int iMods)
 				break;
 			case(GLFW_KEY_Z):			// Decrement Small Radius
 				m_pGPXMngr->modifyHypoSmallR( -0.1f );
+				m_pGPXMngr->undoControlPoint();
 				break;
 			case(GLFW_KEY_D):			// Increment Num Cycles
 				m_pGPXMngr->modifyHypoN( 1 );
@@ -257,6 +258,31 @@ void CmdHandler::handleKeyBoardInput(int cKey, int iAction, int iMods)
 			case(GLFW_KEY_ENTER):		// Input Handling (TODO)
 				break;
 			case(GLFW_KEY_UP):
+				m_pGPXMngr->modifyOrder( 1 );
+				break;
+			case(GLFW_KEY_DOWN):
+				m_pGPXMngr->modifyOrder( -1 );
+				break;
+			case( GLFW_KEY_B ):
+				m_pGPXMngr->toggleAffine();
+				break;
+		}
+	}
+	else
+	{
+		switch ( cKey )
+		{
+			case(GLFW_KEY_LEFT):
+				m_pGPXMngr->retractNurbMan();
+				break;
+			case(GLFW_KEY_RIGHT):
+				m_pGPXMngr->advanceNurbMan();
+				break;
+			case( GLFW_KEY_1):
+				m_pGPXMngr->decrementU();
+				break;
+			case(GLFW_KEY_2):
+				m_pGPXMngr->incrementU();
 				break;
 		}
 	}

@@ -99,6 +99,9 @@
     <ClInclude Include="Headers\HypoCycloid.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Headers\NURBS.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Camera.cpp">
@@ -177,6 +180,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\HypoCycloid.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\NURBS.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -27,6 +27,8 @@ public:
 	void zoom( float fDelta );
 	void pan( vec3 pDirection );
 
+	vec3 getRay( float fX, float fY );
+
 private:
 	vec3 m_vSPos, m_vWorldLookAt;
 	bool m_bUpdated, m_b2DCamera;

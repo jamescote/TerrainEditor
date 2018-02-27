@@ -188,6 +188,7 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 	if (GLFW_MOUSE_BUTTON_1 == button)
 	{
 		glfwGetCursorPos(window, &fX, &fY);
+
 		if (GLFW_PRESS == action)
 			mMouseHndlr->mouseTStart();
 		else if ( GLFW_RELEASE == action )

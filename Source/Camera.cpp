@@ -41,12 +41,10 @@
 // Constructor
 Camera::Camera( int iHeight, int iWidth )
 {
-	m_b2DCamera = true;
+	m_b2DCamera = false;
 
-	if( !m_b2DCamera )
-		m_vSPos = vec3( 90.f, 8.5308f, START_RADIUS );	// (Theta, Phi, Radius)
-	else
-		m_vSPos = vec3( 180.f, 90.f, START_RADIUS );	// (Theta, Phi, Radius) facing down Z-Axis.
+		//m_vSPos = vec3( 90.f, 8.5308f, START_RADIUS );	// (Theta, Phi, Radius)
+	m_vSPos = vec3( 180.f, 90.f, START_RADIUS );	// (Theta, Phi, Radius) facing down Z-Axis.
 	m_vWorldLookAt = vec3( 0.f, 0.f, 0.f );		// (X, Y, Z)
 	updateHxW( iHeight, iWidth );
 
@@ -211,4 +209,25 @@ void Camera::zoom( float fDelta )
 			   << "; T=" << ORTHO_TOP << "; B=" << ORTHO_BOTTOM
 			   << "; Near=" << ORTHO_Z_NEAR << "; Far=" << ORTHO_Z_FAR << " }\n" ;//*/
 	}
+}
+
+// Ray Casting:
+//	Tutorial from: antongerdelan.net/opengl/raycasting.html
+vec3 Camera::getRay( float fX, float fY )
+{
+	// Convert to 3D Normalized Device Coordinates
+	float fMouseX = (2.0f * fX / (float)m_iWidth) - 1.0f;
+	float fMouseY = (-2.0f * fY / (float)m_iHeight) + 1.0f;
+
+	// Create 4D Homogeneous Clip Coordinates
+	vec4 ray_clip = vec4( fMouseX, fMouseY, -1.0f, 1.0f );
+
+	// 4D Eye (Camera) Coordinates - Inverse Projection Matrix
+	vec4 ray_eye = inverse( getPerspectiveMat() ) * ray_clip;
+
+	// Un-project the x,y part -> manually set z,w
+	ray_eye = vec4( ray_eye.x, ray_eye.y, -1.0, 0.0 );
+
+	// 4D World Coordinates
+	return normalize( vec3( inverse( getToCameraMat() ) * ray_eye ) );
 }
