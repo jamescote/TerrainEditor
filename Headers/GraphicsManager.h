@@ -14,13 +14,13 @@ class EnvironmentManager;
 // Purpose: Acts as the Sinew between all moving parts that are required for drawing
 //			with openGL.
 // TODO: Set-up a Manager for Geometry (Geometry may be expanded on later).
-// Written by: James Coté
+// Written by: James Cotï¿½
 class GraphicsManager
 {
 public:
 	static GraphicsManager* getInstance(GLFWwindow *rWindow);
 	~GraphicsManager();
-	
+
 	// Graphics Application
 	bool initializeGraphics( string sFileName );
 	bool renderGraphics();
@@ -28,7 +28,7 @@ public:
 	/// HxW Settings
 	void resizedWindow( int iHeight, int iWidth ) { m_pCamera->updateHxW( iHeight, iWidth ); }
 
-	// Camera Functions 
+	// Camera Functions
 	//void snapShotCamera();
 	void rotateCamera(vec2 pDelta);
 	void zoomCamera(float fDelta);
@@ -74,10 +74,12 @@ public:
 	void decrementU() { m_pNurbs->modifyU( -1 ); }
 	void modifyWeight( float fX, float fY, float fVal );
 	void toggleAffine() { m_pNurbs->toggleDrawAffine(); }
+	void resetWeights() { m_pNurbs->resetWeights(); }
+	void resetCurve() { m_pNurbs->resetCurve(); }
 
 private:
 	// For Singleton Implementation
-	GraphicsManager(GLFWwindow* rWindow); 
+	GraphicsManager(GLFWwindow* rWindow);
 	GraphicsManager(const GraphicsManager* pCopy);
 	static GraphicsManager* m_pInstance;
 
@@ -102,4 +104,3 @@ private:
 	HypoCycloid* m_pHypoCyc;	// Modelling Design
 	NURBS* m_pNurbs;
 };
-

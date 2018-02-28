@@ -30,7 +30,7 @@ const char CmdHandler::cCommands[NUM_CMDS][CMD_SIZE] = { "-help",
 														 "shine",
 														 "r",
 														 "threshold",
-														 "threshold_min",	
+														 "threshold_min",
 														 "threshold_max"	};
 
 CmdHandler* CmdHandler::m_pInstance = nullptr;
@@ -244,6 +244,7 @@ void CmdHandler::handleKeyBoardInput(int cKey, int iAction, int iMods)
 				break;
 			case(GLFW_KEY_R):
 				m_pGPXMngr->toggleHypoAnim();
+				m_pGPXMngr->resetCurve();
 				break;
 			case(GLFW_KEY_F):			// Toggle Wireframe
 				if ( GLFW_RELEASE == iAction )
@@ -265,6 +266,9 @@ void CmdHandler::handleKeyBoardInput(int cKey, int iAction, int iMods)
 				break;
 			case( GLFW_KEY_B ):
 				m_pGPXMngr->toggleAffine();
+				break;
+			case( GLFW_KEY_W):
+				m_pGPXMngr->resetWeights();
 				break;
 		}
 	}
@@ -427,7 +431,7 @@ bool CmdHandler::exec_SetColor()
 			// Verify Value
 			fTempVal = strtof(c_Num, &p_End);
 			bReturnVal |= !checkRange(fTempVal, 0.0f, 1.0f); // True if Valid Range -> set Value
-			if (!bReturnVal) 
+			if (!bReturnVal)
 				fColorRGB[i] = fTempVal;
 		}
 	}
@@ -649,7 +653,7 @@ bool CmdHandler::checkRange(float fVal, float fMIN, float fMAX)
 
 	if (bNotInRange)
 		cout << "Error : Invalid range for RGB Value: " << fVal <<
-			".  Please choose value between " << fMIN << " and " 
+			".  Please choose value between " << fMIN << " and "
 			<< fMAX << "." << endl;
 
 	return !bNotInRange;

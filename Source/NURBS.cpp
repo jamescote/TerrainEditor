@@ -47,6 +47,7 @@ NURBS::~NURBS()
 void NURBS::drawNURBS()
 {
 	generateCurve();
+
 	// Init OpenGl for drawing HypoCycloid
 	glBindVertexArray( m_iVertexArray );
 	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::HYPO_SHDR ) );
@@ -152,7 +153,9 @@ void NURBS::generateCurve()
 				vec3 vNumerator = getWeightNumer( fCurrU, iDelta );
 				float vDenom = getWeightDenom( fCurrU, iDelta );
 				m_vAffineCurve.push_back( vNumerator / vDenom );
+				m_vAffineCurve.back().z = 0.0f;
 				m_vCurve.push_back( vNumerator );
+				m_vCurve.back().z -= 1.0f;
 
 				fCurrU += m_fUInc;
 			}
@@ -191,7 +194,10 @@ vec3 NURBS::getWeightNumer( float fCurrU, unsigned int iDelta )
 {
 	vector< vec3 > c;
 	for ( unsigned int i = 0; i < m_iOrder; ++i )
+	{
 		c.push_back( m_vControlPoints[ iDelta - i ] * m_vWeights[ iDelta - i ] );
+		c.back().z = m_vWeights[ iDelta - i ];
+	}
 	for ( unsigned int r = m_iOrder; r >= 2; r -= 1 )
 	{
 		int i = iDelta;
@@ -318,7 +324,7 @@ void NURBS::selectAdd( vec3 vPosition )
 	{
 		m_vControlPoints.push_back( vPosition );
 		m_vWeights.push_back( 1.0f );
-		m_pTargetPoint = &m_vControlPoints.back();	
+		m_pTargetPoint = &m_vControlPoints.back();
 		m_bUpdateNeeded = true;
 	}
 }
@@ -374,10 +380,10 @@ unsigned int NURBS::delta( float fCurrU )
 			return i;
 
 	return -1;
-	
+
 }
 
-// Generates a Uniform Knot Sequence. 
+// Generates a Uniform Knot Sequence.
 void NURBS::calculateKnots()
 {
 	// Determine spacing of Knot Values ( 1 / m-1 )
