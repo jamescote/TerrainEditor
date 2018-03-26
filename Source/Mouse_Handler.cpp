@@ -36,8 +36,8 @@ void Mouse_Handler::updateMouse(float fX, float fY)
 		m_pGpxMngr->rotateCamera(m_pInitialPos - vec2(fX, fY));
 	}
 
-	if ( m_bTranslateFlag )
-		m_pGpxMngr->moveControlPoint( fX, fY );
+	if (m_bTranslateFlag)
+		m_pGpxMngr->selectFace(fX, fY);
 
 	// Set new current position
 	m_pInitialPos.x = fX;

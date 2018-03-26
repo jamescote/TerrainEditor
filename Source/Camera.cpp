@@ -43,8 +43,8 @@ Camera::Camera( int iHeight, int iWidth )
 {
 	m_b2DCamera = false;
 
-		//m_vSPos = vec3( 90.f, 8.5308f, START_RADIUS );	// (Theta, Phi, Radius)
-	m_vSPos = vec3( 180.f, 90.f, START_RADIUS );	// (Theta, Phi, Radius) facing down Z-Axis.
+	m_vSPos = vec3( 90.f, 8.5308f, START_RADIUS );	// (Theta, Phi, Radius)
+	//m_vSPos = vec3( 180.f, 90.f, START_RADIUS );	// (Theta, Phi, Radius) facing down Z-Axis.
 	m_vWorldLookAt = vec3( 0.f, 0.f, 0.f );		// (X, Y, Z)
 	updateHxW( iHeight, iWidth );
 

@@ -214,9 +214,9 @@ bool ImageBuffer::SaveToFile(const string &imageFileName)
 			{
 				vec3 v = m_imageData[index++];
 				vec3 c = clamp( v, 0.f, 1.f ) * float( 255 );
-				color.rgbRed = c.r;
-				color.rgbGreen = c.g;
-				color.rgbBlue = c.b;
+				color.rgbRed = (BYTE)c.r;
+				color.rgbGreen = (BYTE)c.g;
+				color.rgbBlue = (BYTE)c.b;
 				FreeImage_SetPixelColor( bitmap, j, i, &color );
 			}
 	}

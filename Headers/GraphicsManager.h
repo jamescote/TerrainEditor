@@ -5,6 +5,7 @@
 #include "Camera.h"
 #include "HypoCycloid.h"
 #include "NURBS.h"
+#include "Terrain.h"
 
 // Forward Declarations
 class ShaderManager;
@@ -77,6 +78,9 @@ public:
 	void resetWeights() { m_pNurbs->resetWeights(); }
 	void resetCurve() { m_pNurbs->resetCurve(); }
 
+	// Terrain Manipulation
+	void selectFace(float fX, float fY);
+
 private:
 	// For Singleton Implementation
 	GraphicsManager(GLFWwindow* rWindow);
@@ -103,4 +107,6 @@ private:
 	EnvironmentManager* m_pEnvMngr;
 	HypoCycloid* m_pHypoCyc;	// Modelling Design
 	NURBS* m_pNurbs;
+
+	Terrain* m_pTerrain;
 };

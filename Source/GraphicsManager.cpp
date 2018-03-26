@@ -23,6 +23,7 @@ GraphicsManager::GraphicsManager(GLFWwindow* rWindow)
 	m_pEnvMngr		= EnvironmentManager::getInstance();
 	m_pHypoCyc		= new HypoCycloid();
 	m_pNurbs		= new NURBS();
+	m_pTerrain		= new Terrain();
 
 	m_pWindow = rWindow;
 	int iHeight, iWidth;
@@ -69,6 +70,9 @@ GraphicsManager::~GraphicsManager()
 	if ( nullptr != m_pNurbs )
 		delete m_pNurbs;
 
+	if (nullptr != m_pTerrain)
+		delete m_pTerrain;
+
 	glDeleteBuffers( 1, &m_pVertexBuffer );
 	glDeleteVertexArrays( 1, &m_pVertexArray );
 }
@@ -97,8 +101,8 @@ void GraphicsManager::RenderScene()
 	mat4 pModelViewMatrix = m_pCamera->getToCameraMat();
 	mat4 pProjectionMatrix = m_pCamera->getPerspectiveMat();
 	vec3 vCamLookAt = m_pCamera->getLookAt();
-	GLfloat color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	//GLfloat color[] = { 0.3215f, 0.3411f, 0.4352f, 1.0f };
+	//GLfloat color[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+	GLfloat color[] = { 0.3215f, 0.3411f, 0.4352f, 1.0f };
 	const GLfloat zero = 1.0f;
 
 	glClearBufferfv(GL_COLOR, 0, color);
@@ -110,7 +114,7 @@ void GraphicsManager::RenderScene()
 
 	//renderAxis();
 	m_pEnvMngr->renderEnvironment( vCamLookAt );
-	m_pNurbs->drawNURBS();
+	m_pTerrain->draw();
 	glDisable(GL_DEPTH_TEST);
 }
 
@@ -170,7 +174,7 @@ vec3 GraphicsManager::getIntersection( float fX, float fY )
 {
 	// Local Variables
 	vec3 vRay = m_pCamera->getRay( fX, fY );
-	vec3 vNormal = vec3( 0.0, 0.0, -1.0 ); // normal of xy-plane
+	vec3 vNormal = vec3( 0.0, 1.0, 0.0 ); // normal of xz-plane
 	vec3 vCameraPos = m_pCamera->getCameraWorldPos();
 	vec3 vPos;
 	vec3 vIntersection = vec3( -1.0f );
@@ -218,6 +222,17 @@ void GraphicsManager::modifyWeight( float fX, float fY, float fVal )
 		 !m_pNurbs->modifyWeight( vIntersection, fVal ) )
 			zoomCamera( fVal );
 	
+}
+
+void GraphicsManager::selectFace(float fX, float fY)
+{
+	vec3 vIntersection = getIntersection(fX, fY);
+	int i1, i2, i3;
+
+	if (vec3(-1.0) != vIntersection)
+	{
+		m_pTerrain->get_Triangle_Points(vIntersection.x, vIntersection.z, i1, i2, i3);
+	}
 }
 
 /*******************************************************************************\

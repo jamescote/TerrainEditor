@@ -37,6 +37,7 @@
     <ClInclude Include="Headers\ShaderManager.h" />
     <ClInclude Include="Headers\Sphere.h" />
     <ClInclude Include="Headers\stdafx.h" />
+    <ClInclude Include="Headers\Terrain.h" />
     <ClInclude Include="Headers\Texture.h" />
     <ClInclude Include="Headers\TextureManager.h" />
     <ClInclude Include="Headers\Triangle.h" />
@@ -66,6 +67,7 @@
     <ClCompile Include="Source\Shader.cpp" />
     <ClCompile Include="Source\ShaderManager.cpp" />
     <ClCompile Include="Source\Sphere.cpp" />
+    <ClCompile Include="Source\Terrain.cpp" />
     <ClCompile Include="Source\Texture.cpp" />
     <ClCompile Include="Source\TextureManager.cpp" />
     <ClCompile Include="Source\Triangle.cpp" />
