@@ -24,7 +24,7 @@ uniform sampler2D mySampler;
 void main(void)
 {
 	vec2 UV;
-	vec4 vObjColor = vec4( W, 1.0 );
+	vec4 vObjColor = vec4( rc, gc, bc, 1.0 );
 	vec3 kCool;
 	vec3 kWarm;
 	vec4 textureColor;
