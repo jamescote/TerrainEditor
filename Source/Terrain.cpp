@@ -118,14 +118,16 @@ void Terrain::draw(  )
 
 	// Draw Points
 	ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::WORLD_SHDR, "vColor", &BLACK);
-	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::WORLD_SHDR));
+	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::TERRAIN_GRID_SHDR));
 	glPointSize( 5.0f );
 	glDrawArrays( GL_POINTS, 0, m_vVertices.size() );
 	glPointSize(1.0f);
+	glDrawElements( GL_LINE_STRIP, m_vIndices.size(), GL_UNSIGNED_INT, 0 );
 
 	// Draw Mesh
 	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::TERRAIN_SHDR ) );
 	glDrawElements( GL_TRIANGLES, m_vIndices.size(), GL_UNSIGNED_INT, 0 );
+
 
 	glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(vec3), &m_vTempSelectedQuad, GL_STATIC_DRAW);
 

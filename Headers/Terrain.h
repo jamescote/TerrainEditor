@@ -21,7 +21,6 @@ private:
 	vec3 m_vTempSelectedQuad[4];
 	vec3 m_vStartPos, m_vEndPos;
 
-
 	GLuint m_iVertexArray, m_iVertexBuffer, m_iNormalBuffer, m_iTextureBuffer, m_iIndicesBuffer;
 
 	void get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iIndex2, int &iIndex3, int &iIndex4 );

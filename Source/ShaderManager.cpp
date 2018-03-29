@@ -61,6 +61,9 @@ ShaderManager::ShaderManager()
 
 	m_pShader[ eShaderType::TERRAIN_SHDR ].storeShadrLoc( Shader::eShader::VERTEX, "Shaders/terrain.vert" );
 	m_pShader[ eShaderType::TERRAIN_SHDR ].storeShadrLoc( Shader::eShader::FRAGMENT, "Shaders/terrain.frag" );
+
+	m_pShader[ eShaderType::TERRAIN_GRID_SHDR ].storeShadrLoc( Shader::eShader::VERTEX, "Shaders/terrainGrid.vert" );
+	m_pShader[ eShaderType::TERRAIN_GRID_SHDR ].storeShadrLoc( Shader::eShader::FRAGMENT, "Shaders/terrainGrid.frag" );
 }
 
 // Get the Singleton ShaderManager Object.  Initialize it if nullptr.
