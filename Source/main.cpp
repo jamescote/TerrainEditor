@@ -16,7 +16,7 @@
 #define INPUT_SIZE			128
 #define START_HEIGHT		512
 #define START_WIDTH			512
-#define STARTING_ENV		"scene1.txt"
+#define STARTING_ENV		"scene2.txt"
 #define LIGHT_MOVE_FACTOR	0.05
 
 // Function Prototypes

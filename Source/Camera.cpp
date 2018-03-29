@@ -11,7 +11,7 @@
 #define FOV_Y				60.f
 #define Z_CLOSE				0.01f
 #define Z_FAR				10000.f
-#define START_RADIUS		2.5f
+#define START_RADIUS		20.0f
 #define ORTHO_LR_ZOOM_RATE	2.0f
 #define ORTHO_TB_ZOOM_RATE	2.0f
 #define ORTHO_DEFAULT_RANGE	7.0f
@@ -180,7 +180,7 @@ void Camera::zoom( float fDelta )
 {
 	if ( !m_b2DCamera )
 	{
-		RADIUS -= fDelta;
+		RADIUS -= fDelta * 10.0f;
 		RADIUS = RADIUS < ZOOM_MIN ? ZOOM_MIN : RADIUS;
 		RADIUS = RADIUS > ZOOM_MAX ? ZOOM_MAX : RADIUS;
 

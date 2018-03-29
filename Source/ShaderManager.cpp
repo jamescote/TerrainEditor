@@ -8,7 +8,7 @@
 ShaderManager* ShaderManager::m_pInstance = nullptr;
 
 // Public - Not a singleton
-// Designed mainly to manage different shaders between assignments.  
+// Designed mainly to manage different shaders between assignments.
 ShaderManager::ShaderManager()
 {
 	m_bInitialized = false;
@@ -58,6 +58,9 @@ ShaderManager::ShaderManager()
 
 	m_pShader[ eShaderType::HYPO_SHDR ].storeShadrLoc( Shader::eShader::VERTEX, "Shaders/HypoCycloid.vert" );
 	m_pShader[ eShaderType::HYPO_SHDR ].storeShadrLoc( Shader::eShader::FRAGMENT, "Shaders/HypoCycloid.frag" );
+
+	m_pShader[ eShaderType::TERRAIN_SHDR ].storeShadrLoc( Shader::eShader::VERTEX, "Shaders/terrain.vert" );
+	m_pShader[ eShaderType::TERRAIN_SHDR ].storeShadrLoc( Shader::eShader::FRAGMENT, "Shaders/terrain.frag" );
 }
 
 // Get the Singleton ShaderManager Object.  Initialize it if nullptr.
@@ -80,7 +83,7 @@ ShaderManager::~ShaderManager()
  * Set up Shaders												   *
 \*******************************************************************/
 
-// Inializes shaders. 
+// Inializes shaders.
 bool ShaderManager::initializeShaders()
 {
 	// Initialize Shaders
@@ -116,7 +119,7 @@ GLuint ShaderManager::genVertexBuffer( GLuint iVertArray,
 	GLuint iVertexBufferLoc;
 
 	glBindVertexArray( iVertArray );
-	
+
 	glGenBuffers( 1, &iVertexBufferLoc );
 	glBindBuffer( GL_ARRAY_BUFFER, iVertexBufferLoc );
 	glBufferData( GL_ARRAY_BUFFER, pSize, pData, usage );
@@ -124,12 +127,12 @@ GLuint ShaderManager::genVertexBuffer( GLuint iVertArray,
 	glEnableVertexAttribArray( iSpecifiedIndex );
 
 	glBindVertexArray( 0 );
-	
+
 	return iVertexBufferLoc;
 }
 
 // Binds and creates an Element Array Buffer on the GPU.  Sets the data into the buffer and returns the location.
-GLuint ShaderManager::genIndicesBuffer( GLuint iVertArray, 
+GLuint ShaderManager::genIndicesBuffer( GLuint iVertArray,
 										const void* pData, GLsizeiptr pSize, GLenum usage )
 {
 	GLuint iIndicesBufferLoc;
@@ -150,7 +153,7 @@ void ShaderManager::setUnifromMatrix4x4( eShaderType eType, string sVarName, con
 {
 	GLint iVariableLocation;
 	GLint iProgram, iCurrProgram;
-	
+
 	if ( eType < eShaderType::MAX_SHDRS && eType >= 0 )
 	{
 		iProgram = getProgram( eType );
@@ -173,7 +176,7 @@ void ShaderManager::setUniformVec3( eShaderType eType, string sVarName, const gl
 {
 	GLint iVariableLocation;
 	GLint iProgram, iCurrProgram;
-	
+
 	if ( eType < eShaderType::MAX_SHDRS && eType >= 0 )
 	{
 		iProgram = getProgram( eType );
@@ -207,7 +210,7 @@ void ShaderManager::setUniformFloat(eShaderType eType, string sVarName, float fV
 		if (ERR_CODE != iVariableLocation)
 			glUniform1f(iVariableLocation, fVal);
 		glUseProgram(iCurrProgram);
-		
+
 		#ifdef DEBUG
 			CheckGLErrors();
 		#endif // DEBUG

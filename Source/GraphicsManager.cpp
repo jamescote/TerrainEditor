@@ -33,12 +33,12 @@ GraphicsManager::GraphicsManager(GLFWwindow* rWindow)
 	m_pCamera = new Camera( iHeight, iWidth );
 
 	glGenVertexArrays( 1, &m_pVertexArray );
-	m_pVertexBuffer = m_pShaderMngr->genVertexBuffer( m_pVertexArray, 0, 3, 
+	m_pVertexBuffer = m_pShaderMngr->genVertexBuffer( m_pVertexArray, 0, 3,
 													  AXIS_VERTS.data(), AXIS_VERTS.size() * sizeof( vec3 ), GL_STATIC_DRAW );
 }
 
 // Singleton Implementations
-// Requires Window to initialize 
+// Requires Window to initialize
 GraphicsManager* GraphicsManager::getInstance(GLFWwindow *rWindow)
 {
 	if (nullptr == m_pInstance)
@@ -108,7 +108,7 @@ void GraphicsManager::RenderScene()
 	glClearBufferfv(GL_COLOR, 0, color);
 	glClearBufferfv(GL_DEPTH, 0, &zero);
 	glEnable(GL_DEPTH_TEST);
-	
+
 	// Set camera information in Shaders before rendering
 	m_pShaderMngr->setProjectionModelViewMatrix( &pProjectionMatrix, &pModelViewMatrix );
 
@@ -152,7 +152,7 @@ bool GraphicsManager::initializeGraphics( string sFileName )
 	else
 		m_pEnvMngr->initializeEnvironment(sFileName);
 
-	return bError; 
+	return bError;
 }
 
 /*******************************************************************************\
@@ -218,10 +218,10 @@ void GraphicsManager::modifyWeight( float fX, float fY, float fVal )
 {
 	vec3 vIntersection = getIntersection( fX, fY );
 
-	if ( vec3( -1.0 ) == vIntersection || 
+	if ( vec3( -1.0 ) == vIntersection ||
 		 !m_pNurbs->modifyWeight( vIntersection, fVal ) )
 			zoomCamera( fVal );
-	
+
 }
 
 void GraphicsManager::selectFace(float fX, float fY)
@@ -260,7 +260,7 @@ void GraphicsManager::setRGBVal(eRGB eType, float fVal)
 		sVarName = "";
 	}
 
-	if( fVal >= 0.0f && fVal <= 1.0f && 
+	if( fVal >= 0.0f && fVal <= 1.0f &&
 		eType < RGB_MAX && eType >= 0 )
 		m_pShaderMngr->setUniformFloat( ShaderManager::eShaderType::MESH_SHDR, sVarName, fVal);
 }

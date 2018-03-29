@@ -46,23 +46,23 @@ void Mesh::initMesh()
 {
 	glGenVertexArrays( 1, &m_iVertexArray );
 
-	m_iVertexBuffer = ShaderManager::getInstance()->genVertexBuffer( 
-		m_iVertexArray, 
-		0, 3, 
-		m_pMesh->vertices.data(), 
-		m_pMesh->vertices.size() * sizeof( trimesh::point ), 
+	m_iVertexBuffer = ShaderManager::getInstance()->genVertexBuffer(
+		m_iVertexArray,
+		0, 3,
+		m_pMesh->vertices.data(),
+		m_pMesh->vertices.size() * sizeof( trimesh::point ),
 		GL_STATIC_DRAW );
-	m_iNormalBuffer = ShaderManager::getInstance()->genVertexBuffer( 
-		m_iVertexArray, 
-		1, 3, 
-		m_pMesh->normals.data(), 
-		m_pMesh->normals.size() * sizeof( trimesh::vec ), 
+	m_iNormalBuffer = ShaderManager::getInstance()->genVertexBuffer(
+		m_iVertexArray,
+		1, 3,
+		m_pMesh->normals.data(),
+		m_pMesh->normals.size() * sizeof( trimesh::vec ),
 		GL_STATIC_DRAW );
 
-	m_iIndicesBuffer = ShaderManager::getInstance()->genIndicesBuffer( 
-		m_iVertexArray, 
-		m_pIndices.data(), 
-		m_pIndices.size() * sizeof( unsigned int ), 
+	m_iIndicesBuffer = ShaderManager::getInstance()->genIndicesBuffer(
+		m_iVertexArray,
+		m_pIndices.data(),
+		m_pIndices.size() * sizeof( unsigned int ),
 		GL_STATIC_DRAW );
 
 }
@@ -73,7 +73,7 @@ void Mesh::drawMesh( )
 	ShaderManager* pShdrMngr = ShaderManager::getInstance();
 
 	glBindVertexArray( m_iVertexArray );
-	glUseProgram( pShdrMngr->getProgram( ShaderManager::eShaderType::MESH_SHDR ) );
+	glUseProgram( pShdrMngr->getProgram( ShaderManager::eShaderType::PLANE_SHDR ) );
 
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, m_iIndicesBuffer );
 	glDrawElements( GL_TRIANGLES, m_pMesh->faces.size() * 3, GL_UNSIGNED_INT, 0 );

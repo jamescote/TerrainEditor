@@ -23,7 +23,7 @@
 # ============================================================
 
 light {
-  .5 .5 .5
+  0 50 0
   .5 .5 .5
   +texture {
 	textures-256-256/lightbulb.png
@@ -32,14 +32,14 @@ light {
 
 # box
 ## bottom
-plane {
-	0 0 0
-	-1.0 -0.15 -1.0
-	-1.0 -0.15 1.0
-	1.0  -0.15 -1.0
-	1.0  -0.15 1.0
-	0
-}
+#plane {
+#	0 0 0
+#	-1.0 -0.15 -1.0
+#	-1.0 -0.15 1.0
+#	1.0  -0.15 -1.0
+#	1.0  -0.15 1.0
+#	0
+#}
 ## Side 1
 #plane {
 #	0 0 0
@@ -87,18 +87,18 @@ plane {
 #}
 
 # Mesh
-mesh_obj {
-	0 0 0
-	+mesh {
-		models/big_dodge.ply
-	}
-	+texture {
-		textures-256-256/fig-10d.png
-	}
-	+anim_track {
-		noname.con
-	}
-}
+#mesh_obj {
+#	0 0 0
+#	+mesh {
+#		models/big_dodge.ply
+#	}
+#	+texture {
+#		textures-256-256/fig-10d.png
+#	}
+#	+anim_track {
+#		noname.con
+#	}
+#}
 
 #sphere {
 #	0 .1 0 .025

@@ -145,6 +145,7 @@ void EnvironmentManager::renderEnvironment( const vec3& vCamLookAt )
 		pShdrMngr->setUniformVec3( ShaderManager::eShaderType::LIGHT_SHDR, "lightPosition", &pLightPosition );
 		pShdrMngr->setUniformVec3( ShaderManager::eShaderType::MESH_SHDR, "lightPosition",  &pLightPosition );
 		pShdrMngr->setUniformVec3( ShaderManager::eShaderType::PLANE_SHDR, "lightPosition", &pLightPosition );
+		pShdrMngr->setUniformVec3(ShaderManager::eShaderType::TERRAIN_SHDR, "lightPosition", &pLightPosition);
 
 		//(*pLightIter)->draw( vCamLookAt );
 		for ( vector<Object3D*>::iterator pIter = m_pObjects.begin();

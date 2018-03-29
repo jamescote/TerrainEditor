@@ -9,8 +9,8 @@
 //			manipulation and properly initializes and destroys created Shaders.
 // Current Issues: Uniform variables hard-coded.
 // TODO: (Low Priority) Scan through all shader code for uniform variables and set up
-//						management of those variables dynamically. 
-// Written by: James Coté
+//						management of those variables dynamically.
+// Written by: James Cotï¿½
 class ShaderManager
 {
 public:
@@ -28,6 +28,7 @@ public:
 		OUTSIDE_BOUNDRY_SHDR,
 		RC_TRACK_SHDR,
 		HYPO_SHDR,
+		TERRAIN_SHDR,
 		MAX_SHDRS
 	};
 
@@ -48,13 +49,13 @@ public:
 
 	// Setup Buffers and Arrays in GPU
 	GLuint genVertexBuffer( GLuint iVertArray,
-							GLuint iSpecifiedIndex, 
-							GLint iChunkSize, 
+							GLuint iSpecifiedIndex,
+							GLint iChunkSize,
 							const void* pData, GLsizeiptr pSize, GLenum usage );
-	GLuint genIndicesBuffer( GLuint iVertArray, 
+	GLuint genIndicesBuffer( GLuint iVertArray,
 							 const void* pData, GLsizeiptr pSize, GLenum usage );
 
-	// Shader Uniform Variable Manipulation 
+	// Shader Uniform Variable Manipulation
 	void setUnifromMatrix4x4( eShaderType eType, string sVarName, const mat4* pResultingMatrix );
 	void setUniformVec3( eShaderType eType, string sVarName, const glm::vec3* pLightPos );
 	void setUniformFloat(eShaderType eType, string sVarName, float fVal);
@@ -74,4 +75,3 @@ private:
 	// Shader Variables
 	Shader m_pShader[MAX_SHDRS];
 };
-

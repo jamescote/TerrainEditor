@@ -2,6 +2,7 @@
 
 uniform mat4 modelview;
 uniform mat4 projection;
+uniform vec3 lightPosition;
 
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec3 normal;
@@ -11,8 +12,6 @@ out vec3 N;
 out vec3 P;
 out vec3 L;
 out vec2 texturePos;
-
-uniform vec3 lightPosition;
 
 void main (void)
 {	
