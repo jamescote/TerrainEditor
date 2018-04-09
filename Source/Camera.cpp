@@ -180,7 +180,7 @@ void Camera::zoom( float fDelta )
 {
 	if ( !m_b2DCamera )
 	{
-		RADIUS -= fDelta * 10.0f;
+		RADIUS -= fDelta * 50.0f;
 		RADIUS = RADIUS < ZOOM_MIN ? ZOOM_MIN : RADIUS;
 		RADIUS = RADIUS > ZOOM_MAX ? ZOOM_MAX : RADIUS;
 

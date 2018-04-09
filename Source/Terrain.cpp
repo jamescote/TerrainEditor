@@ -1,4 +1,5 @@
 #include "Terrain.h"
+#include "ObjLoader.h"
 
 #define NUM_CORNERS 4
 #define DEFAULT_U 10
@@ -15,61 +16,18 @@ Terrain::Terrain()
 	// Set up generation for Terrain
 	// Length = U
 	// Width = V
+
+	vector<vec2> uvs; 
+
+	objLoader::loadOBJ("models/terrain.obj",m_vVertices, m_vIndices, uvs, m_vNormals);
+
+
 	float fUV_Step_U = (float)(1 / DEFAULT_U);
 	float fUV_Step_V = (float)(1 / DEFAULT_V);
-	vec3 vStartingPos = vec3(-DEFAULT_WIDTH / 2.0f, 0.0, -DEFAULT_DEPTH / 2.0f);
-	m_vStartPos = vStartingPos;
-	m_vEndPos = vStartingPos + vec3(DEFAULT_WIDTH, 0.0, DEFAULT_DEPTH);
-	vec2 vStartingUV = vec2(0.0);
-	vector< vec3 > vWorkingVerts, vWorkingNormals;
-	vector< vec2 > vWorkingUVs;
-	for (unsigned int i = 0; i < 4; ++i)
-		m_vTempSelectedQuad[i] = vec3(0.0);
 
-	// Generate Vertices for the Terrain
-	for (unsigned int u = 0; u < DEFAULT_U; ++u)
-	{
-		for (unsigned int v = 0; v < DEFAULT_V; ++v)
-		{
-			// Add Normal and Vertex
-			m_vVertices.push_back( vStartingPos );
-			m_vNormals.push_back(vec3(0.0, 1.0, 0.0));
-			m_vUVs.push_back(vStartingUV);
-			vStartingUV.y += fUV_Step_V;
-			vStartingPos.z += TILE_DEPTH;	// Increment to next vPosition
-		}
-		// Store the vector and reset for next u-strip
-		vStartingPos.z -= DEFAULT_DEPTH;
-		vStartingPos.x += TILE_WIDTH;
-		vStartingUV.y = 0.0f;
-		vStartingUV.x += fUV_Step_U;
-	}
+	m_vStartPos = m_vVertices.front();
+	m_vEndPos = m_vVertices.back();
 
-	// Generate Indices for drawing
-	vStartingPos.x -= DEFAULT_WIDTH;
-	vStartingPos += vec3( TILE_WIDTH / 2.0f, 0.0, TILE_DEPTH / 2.0f );
-	int iIndex0, iIndex1, iIndex2, iIndex3;
-	for (unsigned int u = 0; u < DEFAULT_U; ++u)
-	{
-		for (unsigned int v = 0; v < DEFAULT_V; ++v)
-		{
-			get_Quad_Points( vStartingPos.x, vStartingPos.z, iIndex0, iIndex1, iIndex2, iIndex3 );
-			if( iIndex0 > -1 )
-			{
-				// Push Indices for first Triangle
-				m_vIndices.push_back(iIndex0);
-				m_vIndices.push_back(iIndex1);
-				m_vIndices.push_back(iIndex2);
-				// Push Indices for Second Triangle
-				m_vIndices.push_back(iIndex1);
-				m_vIndices.push_back(iIndex2);
-				m_vIndices.push_back(iIndex3);
-			}
-			vStartingPos.z += TILE_DEPTH;
-		}
-		vStartingPos.z -= DEFAULT_DEPTH;
-		vStartingPos.x += TILE_WIDTH;
-	}
 
 	glGenVertexArrays( 1, &m_iVertexArray );
 
@@ -102,6 +60,8 @@ Terrain::~Terrain()
 // Setup OpenGl to draw the Terrain using the Plane Shader.
 void Terrain::draw(  )
 {
+
+
 	// Colors for drawing
 	vec3 RED = vec3(1.0, 0.0, 0.0);
 	vec3 BLACK = vec3(0.0);
@@ -122,16 +82,15 @@ void Terrain::draw(  )
 	glPointSize( 5.0f );
 	glDrawArrays( GL_POINTS, 0, m_vVertices.size() );
 	glPointSize(1.0f);
-	glDrawElements( GL_LINE_STRIP, m_vIndices.size(), GL_UNSIGNED_INT, 0 );
+	//glDrawElements( GL_LINES, m_vIndices.size(), GL_UNSIGNED_INT, 0 );
 
 	// Draw Mesh
 	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::TERRAIN_SHDR ) );
 	glDrawElements( GL_TRIANGLES, m_vIndices.size(), GL_UNSIGNED_INT, 0 );
 
-
 	glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(vec3), &m_vTempSelectedQuad, GL_STATIC_DRAW);
 
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glDrawArrays(GL_TRIANGLES, 0, 4);
 
 
 	/* Not Yet Implemented
