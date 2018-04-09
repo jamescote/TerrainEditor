@@ -3,6 +3,9 @@
 #include "Object_Factory.h"
 #include "EnvironmentManager.h"
 
+#define LOW_POLY 0
+#define HIGH_POLY 1
+
 ///////////////
 // CONSTANTS //
 ///////////////
@@ -11,6 +14,8 @@ const mat3 WORLD_COORDS = mat3( 1.0 );
 const vector<vec3> AXIS_VERTS = { WORLD_CENTER, WORLD_COORDS[ 0 ],
 								  WORLD_CENTER, WORLD_COORDS[ 1 ],
 								  WORLD_CENTER, WORLD_COORDS[ 2 ] };
+const string LOW_POLY_LOC	= "models/lowPolyTerrain.obj";
+const string HIGH_POLY_LOC	= "models/terrain.obj";
 
 // Singleton Variable initialization
 GraphicsManager* GraphicsManager::m_pInstance = nullptr;
@@ -23,7 +28,9 @@ GraphicsManager::GraphicsManager(GLFWwindow* rWindow)
 	m_pEnvMngr		= EnvironmentManager::getInstance();
 	m_pHypoCyc		= new HypoCycloid();
 	m_pNurbs		= new NURBS();
-	m_pTerrain		= new Terrain();
+	m_pTerrain[LOW_POLY] = new Terrain(LOW_POLY_LOC);
+	m_pTerrain[HIGH_POLY] = new Terrain(HIGH_POLY_LOC);
+	m_iCurrTerrain = LOW_POLY;
 
 	m_pWindow = rWindow;
 	int iHeight, iWidth;
@@ -70,8 +77,9 @@ GraphicsManager::~GraphicsManager()
 	if ( nullptr != m_pNurbs )
 		delete m_pNurbs;
 
-	if (nullptr != m_pTerrain)
-		delete m_pTerrain;
+	for( unsigned int i = 0; i < 2; ++i)
+		if (nullptr != m_pTerrain[i])
+			delete m_pTerrain[i];
 
 	glDeleteBuffers( 1, &m_pVertexBuffer );
 	glDeleteVertexArrays( 1, &m_pVertexArray );
@@ -114,7 +122,7 @@ void GraphicsManager::RenderScene()
 
 	//renderAxis();
 	m_pEnvMngr->renderEnvironment( vCamLookAt );
-	m_pTerrain->draw();
+	m_pTerrain[m_iCurrTerrain]->draw();
 	glDisable(GL_DEPTH_TEST);
 }
 
@@ -231,7 +239,7 @@ void GraphicsManager::selectFace(float fX, float fY)
 
 	if (vec3(-1.0) != vIntersection)
 	{
-		m_pTerrain->get_Triangle_Points(vIntersection.x, vIntersection.z, i1, i2, i3);
+		m_pTerrain[m_iCurrTerrain]->get_Triangle_Points(vIntersection.x, vIntersection.z, i1, i2, i3);
 	}
 }
 

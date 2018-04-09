@@ -11,7 +11,7 @@
 #define PI					3.14159265f
 
 // Constructor
-Terrain::Terrain()
+Terrain::Terrain(const string& pTerrLoc)
 {
 	// Set up generation for Terrain
 	// Length = U
@@ -19,7 +19,7 @@ Terrain::Terrain()
 
 	vector<vec2> uvs; 
 
-	objLoader::loadOBJ("models/terrain.obj",m_vVertices, m_vIndices, uvs, m_vNormals);
+	objLoader::loadOBJ(pTerrLoc.data(),m_vVertices, m_vIndices, uvs, m_vNormals);
 
 
 	float fUV_Step_U = (float)(1 / DEFAULT_U);

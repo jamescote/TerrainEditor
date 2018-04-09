@@ -4,8 +4,9 @@ namespace objLoader
 {
 	bool loadOBJ(const char * path, vector<vec3>& out_vertices, vector<unsigned int>& out_vertIndicies, vector<vec2>& out_uvs, vector<vec3>& out_normals)
 	{
-		FILE * file = fopen(path, "r");
-		if( file == NULL ){
+		FILE * file = nullptr;
+		fopen_s(&file, path, "r");
+		if( file == nullptr ){
 			printf("Unable to open \"%s\"!\n", path);
 			return false;
 		}
@@ -15,14 +16,14 @@ namespace objLoader
 			char lineHeader[128];
 
 			// read the first word of the line
-			int res = fscanf(file, "%s", lineHeader);
+			int res = fscanf_s(file, "%s", lineHeader, 128);
 
 			if (res == EOF)
 				break; // EOF = End Of File. Quit the loop
 				
 			if (strcmp(lineHeader, "v") == 0) {
 				vec3 vertex;
-				fscanf(file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z);
+				fscanf_s(file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z);
 
 				// printf("vertex: (%f, %f, %f)\n",vertex.x, vertex.y, vertex.z);
 
@@ -30,7 +31,7 @@ namespace objLoader
 			}
 			else if (strcmp(lineHeader, "vn") == 0) {
 				vec3 normal;
-				fscanf(file, "%f %f %f\n", &normal.x, &normal.y, &normal.z);
+				fscanf_s(file, "%f %f %f\n", &normal.x, &normal.y, &normal.z);
 
 				// printf("normal: (%f, %f, %f)\n",normal.x, normal.y, normal.z);
 
@@ -39,7 +40,7 @@ namespace objLoader
 			else if ( strcmp( lineHeader, "vt" ) == 0 )
 			{
 				vec2 uv;
-				fscanf(file, "%f %f\n", &uv.x, &uv.y );
+				fscanf_s(file, "%f %f\n", &uv.x, &uv.y );
 
 				// printf("uv: (%f, %f)\n",uv.x, uv.y);
 
@@ -50,7 +51,7 @@ namespace objLoader
 				std::string vertex1, vertex2, vertex3;
 				unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
 				//int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2] );
-				int matches = fscanf(file, "%d//%d %d//%d %d//%d\n", &vertexIndex[0], &normalIndex[0], &vertexIndex[1], &normalIndex[1], &vertexIndex[2], &normalIndex[2] );
+				int matches = fscanf_s(file, "%d//%d %d//%d %d//%d\n", &vertexIndex[0], &normalIndex[0], &vertexIndex[1], &normalIndex[1], &vertexIndex[2], &normalIndex[2] );
 	
 				// printf("F: %d//%d %d//%d %d//%d\n matches: %d\n",vertexIndex[0], normalIndex[0], vertexIndex[1], normalIndex[1], vertexIndex[2], normalIndex[2],matches);
 
@@ -71,5 +72,9 @@ namespace objLoader
 				//cin.get();
 			}
 		}
+
+		// Close the File once finished
+		fclose(file);
+		return true;
 	}
 }
