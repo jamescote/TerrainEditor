@@ -48,20 +48,23 @@ namespace objLoader
 			else if ( strcmp( lineHeader, "f" ) == 0 )
 			{
 				std::string vertex1, vertex2, vertex3;
-				unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
+				unsigned int vertexIndex[4], uvIndex[4], normalIndex[4];
 				//int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2] );
-				int matches = fscanf(file, "%d//%d %d//%d %d//%d\n", &vertexIndex[0], &normalIndex[0], &vertexIndex[1], &normalIndex[1], &vertexIndex[2], &normalIndex[2] );
+				int matches = fscanf(file, "%d//%d %d//%d %d//%d %d//%d\n", &vertexIndex[0], &normalIndex[0], &vertexIndex[1], &normalIndex[1], &vertexIndex[2], &normalIndex[2], &vertexIndex[3], &normalIndex[3]);
 	
 				// printf("F: %d//%d %d//%d %d//%d\n matches: %d\n",vertexIndex[0], normalIndex[0], vertexIndex[1], normalIndex[1], vertexIndex[2], normalIndex[2],matches);
 
-				if (matches != 6)
+				if (matches != 8) 
 				{
 					printf("File can't be read, Try exporting with other options or ask Brad\n");
 					return false;
 				}
 				out_vertIndicies.push_back(vertexIndex[0]-1);
+				out_vertIndicies.push_back(vertexIndex[3]-1);
+				out_vertIndicies.push_back(vertexIndex[1]-1);
 				out_vertIndicies.push_back(vertexIndex[1]-1);
 				out_vertIndicies.push_back(vertexIndex[2]-1);
+				out_vertIndicies.push_back(vertexIndex[3]-1);
 				// uvIndices    .push_back(uvIndex[0]-1);
 				// uvIndices    .push_back(uvIndex[1]-1);
 				// uvIndices    .push_back(uvIndex[2]-1);
@@ -71,5 +74,7 @@ namespace objLoader
 				//cin.get();
 			}
 		}
+
+		fclose(file);
 	}
-}
+} 

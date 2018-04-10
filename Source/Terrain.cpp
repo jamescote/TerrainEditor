@@ -16,31 +16,60 @@ Terrain::Terrain()
 	// Set up generation for Terrain
 	// Length = U
 	// Width = V
-
+	vector<int> BCverts;
 	vector<vec2> uvs; 
 
-	objLoader::loadOBJ("models/terrain.obj",m_vVertices, m_vIndices, uvs, m_vNormals);
-
-
-	float fUV_Step_U = (float)(1 / DEFAULT_U);
-	float fUV_Step_V = (float)(1 / DEFAULT_V);
+	objLoader::loadOBJ("models/terrain2.obj",m_vVertices, m_vIndices, uvs, m_vNormals);
 
 	m_vStartPos = m_vVertices.front();
 	m_vEndPos = m_vVertices.back();
 
+	m_fWidth = abs( m_vEndPos.x - m_vStartPos.x);
+	m_fDepth = abs( m_vEndPos.z - m_vStartPos.z);
+
+	m_fTileWidth = abs( m_vVertices[1].x - m_vStartPos.x);
+	m_iUSize = (unsigned int)ceil(m_fWidth / m_fTileWidth) + 1;
+	m_fTileDepth = abs(m_vVertices[m_iUSize].z - m_vStartPos.z);
+	m_iVSize = (unsigned int)ceil(m_fDepth / m_fTileDepth);
+
+
+	unsigned int iArry[3] = {0, 1, 2};
+	unsigned int iX = 0;
+
+	BCverts.reserve( m_vIndices.size());
+
+	for( unsigned int v = 0; v < m_iVSize; ++v )
+	{
+		for( unsigned int u = 0; u < m_iUSize; u += 3)
+		{
+			BCverts.push_back(iArry[iX]);
+			if( u + 1 < m_iUSize )
+				BCverts.push_back(iArry[(iX + 1) % 3]);
+			if( u + 2 < m_iUSize )
+				BCverts.push_back(iArry[(iX + 2) % 3]);
+		}
+		iX = (iX + 2) % 3;
+	}
 
 	glGenVertexArrays( 1, &m_iVertexArray );
 
 	m_iVertexBuffer = ShaderManager::getInstance()->genVertexBuffer( m_iVertexArray,
 									    							 0, 3, m_vVertices.data(),
 																	 m_vVertices.size() * sizeof( glm::vec3 ), GL_STATIC_DRAW );
+
+	m_iBaryCentric = ShaderManager::getInstance()->genVertexBuffer( m_iVertexArray,
+									    							 1, 1, BCverts.data(),
+																	 BCverts.size() * sizeof( int ), GL_STATIC_DRAW );
+
 	m_iNormalBuffer = ShaderManager::getInstance()->genVertexBuffer( m_iVertexArray,
-																	 1, 3, m_vNormals.data(),
+																	 2, 3, m_vNormals.data(),
 																	 m_vNormals.size() * sizeof( glm::vec3 ), GL_STATIC_DRAW );
+
 	m_iTextureBuffer = ShaderManager::getInstance()->genVertexBuffer(m_iVertexArray,
-																	 2, 2, m_vUVs.data(),
+																	 3, 2, m_vUVs.data(),
 																	 m_vUVs.size() * sizeof(vec2), GL_STATIC_DRAW);
-  m_iIndicesBuffer = ShaderManager::getInstance()->genIndicesBuffer( m_iVertexArray,
+
+  	m_iIndicesBuffer = ShaderManager::getInstance()->genIndicesBuffer( m_iVertexArray,
 																	 m_vIndices.data(),
 																	 m_vIndices.size() * sizeof( unsigned int ),
 																	 GL_STATIC_DRAW );
@@ -52,6 +81,7 @@ Terrain::~Terrain()
 {
 	glDeleteBuffers( 1, &m_iNormalBuffer );
 	glDeleteBuffers( 1, &m_iVertexBuffer );
+	glDeleteBuffers( 1, &m_iBaryCentric );
 	glDeleteBuffers( 1, &m_iTextureBuffer );
 	glDeleteBuffers( 1, &m_iIndicesBuffer );
 	glDeleteVertexArrays( 1, &m_iVertexArray );
@@ -82,7 +112,7 @@ void Terrain::draw(  )
 	glPointSize( 5.0f );
 	glDrawArrays( GL_POINTS, 0, m_vVertices.size() );
 	glPointSize(1.0f);
-	//glDrawElements( GL_LINES, m_vIndices.size(), GL_UNSIGNED_INT, 0 );
+	//glDrawElements( GL_LINE_STRIP, m_vIndices.size(), GL_UNSIGNED_INT, 0 );
 
 	// Draw Mesh
 	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::TERRAIN_SHDR ) );
@@ -90,7 +120,7 @@ void Terrain::draw(  )
 
 	glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(vec3), &m_vTempSelectedQuad, GL_STATIC_DRAW);
 
-	glDrawArrays(GL_TRIANGLES, 0, 4);
+	//glDrawArrays(GL_TRIANGLES, 0, 4);
 
 
 	/* Not Yet Implemented

@@ -5,13 +5,20 @@ uniform mat4 projection;
 uniform vec3 lightPosition;
 
 layout (location = 0) in vec3 vertex;
-layout (location = 1) in vec3 normal;
-layout (location = 2) in vec2 uv;
+layout (location = 1) in int bc;
+layout (location = 2) in vec3 normal;
+layout (location = 3) in vec2 uv;
 
 //attributes in camera coordinates
 out vec3 N;
 out vec3 L;
 out vec3 P;
+out vec3 vBC;
+
+vec3[] bcVerts = {vec3(1,0,0),
+				vec3(0,1,0),
+				vec3(0,0,1)};
+
 
 void main(void)
 {
@@ -28,4 +35,5 @@ void main(void)
 	L = normalize(lightCameraSpace.xyz - P);
 
     gl_Position = projection * positionCameraSpace;
+    vBC=bcVerts[bc];
 }
