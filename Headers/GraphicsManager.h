@@ -80,6 +80,7 @@ public:
 
 	// Terrain Manipulation
 	void selectFace(float fX, float fY);
+	void swapTerrains() { m_iCurrTerrain = (m_iCurrTerrain + 1) % 2; }
 
 private:
 	// For Singleton Implementation
@@ -108,5 +109,6 @@ private:
 	HypoCycloid* m_pHypoCyc;	// Modelling Design
 	NURBS* m_pNurbs;
 
-	Terrain* m_pTerrain;
+	Terrain* m_pTerrain[2];
+	unsigned int m_iCurrTerrain;
 };

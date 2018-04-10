@@ -4,8 +4,9 @@ namespace objLoader
 {
 	bool loadOBJ(const char * path, vector<vec3>& out_vertices, vector<unsigned int>& out_vertIndicies, vector<vec2>& out_uvs, vector<vec3>& out_normals)
 	{
-		FILE * file = fopen(path, "r");
-		if( file == NULL ){
+		FILE * file = nullptr;
+		file = fopen( path, "r");
+		if( file == nullptr ){
 			printf("Unable to open \"%s\"!\n", path);
 			return false;
 		}
@@ -15,7 +16,7 @@ namespace objLoader
 			char lineHeader[128];
 
 			// read the first word of the line
-			int res = fscanf(file, "%s", lineHeader);
+			int res = fscanf(file, "%s", lineHeader, 128);
 
 			if (res == EOF)
 				break; // EOF = End Of File. Quit the loop
@@ -51,6 +52,7 @@ namespace objLoader
 				unsigned int vertexIndex[4], uvIndex[4], normalIndex[4];
 				//int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2] );
 				int matches = fscanf(file, "%d//%d %d//%d %d//%d %d//%d\n", &vertexIndex[0], &normalIndex[0], &vertexIndex[1], &normalIndex[1], &vertexIndex[2], &normalIndex[2], &vertexIndex[3], &normalIndex[3]);
+
 	
 				// printf("F: %d//%d %d//%d %d//%d\n matches: %d\n",vertexIndex[0], normalIndex[0], vertexIndex[1], normalIndex[1], vertexIndex[2], normalIndex[2],matches);
 
@@ -75,6 +77,8 @@ namespace objLoader
 			}
 		}
 
+		// Close the File once finished
 		fclose(file);
+		return true;
 	}
 } 

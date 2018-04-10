@@ -32,6 +32,7 @@
     <ClInclude Include="Headers\Object.h" />
     <ClInclude Include="Headers\Object3D.h" />
     <ClInclude Include="Headers\Object_Factory.h" />
+    <ClInclude Include="Headers\ObjLoader.h" />
     <ClInclude Include="Headers\Plane.h" />
     <ClInclude Include="Headers\Shader.h" />
     <ClInclude Include="Headers\ShaderManager.h" />
@@ -63,6 +64,7 @@
     <ClCompile Include="Source\Object.cpp" />
     <ClCompile Include="Source\Object3D.cpp" />
     <ClCompile Include="Source\Object_Factory.cpp" />
+    <ClCompile Include="Source\ObjLoader.cpp" />
     <ClCompile Include="Source\Plane.cpp" />
     <ClCompile Include="Source\Shader.cpp" />
     <ClCompile Include="Source\ShaderManager.cpp" />

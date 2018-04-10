@@ -33,7 +33,15 @@ void main(void)
 	N = normalize( normalMatrix * normal );
 
 	L = normalize(lightCameraSpace.xyz - P);
-
+	
+	gl_PointSize = gl_Position.w * .5;
     gl_Position = projection * positionCameraSpace;
     vBC=bcVerts[bc];
+    
+    
+    vec3 ndc = gl_Position.xyz / gl_Position.w ; // perspective divide.
+
+	float zDist = 1.0-ndc.z ; // 1 is close (right up in your face,)
+	// 0 is far (at the far plane)
+	gl_PointSize = 500.0*zDist ; // between 0 and 50 now.
 }

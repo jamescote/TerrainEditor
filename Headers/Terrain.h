@@ -5,7 +5,7 @@
 class Terrain
 {
 public:
-	Terrain();
+	Terrain(const string& pTerrLoc);
 	~Terrain();
 
 	// Overridden intersect function

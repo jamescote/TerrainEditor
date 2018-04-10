@@ -224,7 +224,7 @@ void CmdHandler::handleKeyBoardInput(int cKey, int iAction, int iMods)
 				m_pGPXMngr->modifyHypoBigR( 0.1f );
 				break;
 			case(GLFW_KEY_X):			// Decrement Big Radius
-				m_pGPXMngr->modifyHypoBigR( -0.1f );
+				m_pGPXMngr->swapTerrains();
 				break;
 			case(GLFW_KEY_A):			// Increment Small Radius
 				m_pGPXMngr->modifyHypoSmallR( 0.1f );

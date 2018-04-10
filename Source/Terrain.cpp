@@ -11,7 +11,7 @@
 #define PI					3.14159265f
 
 // Constructor
-Terrain::Terrain()
+Terrain::Terrain(const string& pTerrLoc)
 {
 	// Set up generation for Terrain
 	// Length = U
@@ -19,7 +19,11 @@ Terrain::Terrain()
 	vector<int> BCverts;
 	vector<vec2> uvs; 
 
-	objLoader::loadOBJ("models/terrain2.obj",m_vVertices, m_vIndices, uvs, m_vNormals);
+	objLoader::loadOBJ(pTerrLoc.data(),m_vVertices, m_vIndices, uvs, m_vNormals);
+
+
+	float fUV_Step_U = (float)(1 / DEFAULT_U);
+	float fUV_Step_V = (float)(1 / DEFAULT_V);
 
 	m_vStartPos = m_vVertices.front();
 	m_vEndPos = m_vVertices.back();
@@ -109,9 +113,8 @@ void Terrain::draw(  )
 	// Draw Points
 	ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::WORLD_SHDR, "vColor", &BLACK);
 	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::TERRAIN_GRID_SHDR));
-	glPointSize( 5.0f );
+	glPointSize( 5.0f );  // divide by 4th positon in the projected vector
 	glDrawArrays( GL_POINTS, 0, m_vVertices.size() );
-	glPointSize(1.0f);
 	//glDrawElements( GL_LINE_STRIP, m_vIndices.size(), GL_UNSIGNED_INT, 0 );
 
 	// Draw Mesh

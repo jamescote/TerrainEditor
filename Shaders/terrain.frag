@@ -37,15 +37,18 @@ void main(void)
 
 	//kCool = vec3( 0.0, 0.0, b) + (alpha * vObjColor.rgb);
 	//kWarm = vec3( y, y, 0.0 ) + (beta * vObjColor.rgb);
+	
+	float widthScalar = clamp(dot(normalize(-P),N),0.5f,1.0f);
 
-
-    if(any(lessThan(vBC, vec3(0.02))))
+    if(any(lessThan(vBC, vec3(0.02)*widthScalar)))
     {
 		color = vec4(0,0,0, 1.0);
 	}
 	else{
 		color = vObjColor;
 	}
+	
+
 
 	// Implementing Gooch Shading:
 	//		Formula: I = (( 1 - (L.N))/2) * kCool +
