@@ -12,6 +12,7 @@ public:
 	void draw( );
 
 	void get_Triangle_Points(float fPosX, float fPosZ, int &index1, int &index2, int &index3);
+	void get_Point_Pos( float fPosX, float fPosZ );
 
 private:
 	Terrain( const Terrain* pNewPlane );  // Protected Copy Constructor
@@ -22,8 +23,14 @@ private:
 	vector< unsigned int > m_vIndices;
 	vec3 m_vTempSelectedQuad[4];
 	vec3 m_vStartPos, m_vEndPos;
+	vec3 m_vSelectedPoint;
 	float m_fWidth, m_fDepth, m_fTileWidth, m_fTileDepth;
 	unsigned int m_iUSize, m_iVSize;
+	
+	// Calculation functions
+	void calculateDimensions();
+	void generateIndices();
+	void generateNormals();
 
 	GLuint m_iVertexArray, m_iBaryCentric, m_iVertexBuffer, m_iNormalBuffer, m_iTextureBuffer, m_iIndicesBuffer;
 

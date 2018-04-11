@@ -239,7 +239,7 @@ void GraphicsManager::selectFace(float fX, float fY)
 
 	if (vec3(-1.0) != vIntersection)
 	{
-		m_pTerrain[m_iCurrTerrain]->get_Triangle_Points(vIntersection.x, vIntersection.z, i1, i2, i3);
+		m_pTerrain[m_iCurrTerrain]->get_Point_Pos(vIntersection.x, vIntersection.z);
 	}
 }
 

@@ -1,84 +1,62 @@
 #include "ObjLoader.h"
+#include <sstream>
 
 namespace objLoader
 {
 	bool loadOBJ(const char * path, vector<vec3>& out_vertices, vector<unsigned int>& out_vertIndicies, vector<vec2>& out_uvs, vector<vec3>& out_normals)
 	{
-		FILE * file = nullptr;
-		file = fopen( path, "r");
-		if( file == nullptr ){
-			printf("Unable to open \"%s\"!\n", path);
-			return false;
-		}
+		// Locals
+		ifstream in(path);
+		bool bReturnValue = in.is_open();
 
-		while( 1 )
+		// Failed to load file.
+		if (!bReturnValue)
+			cerr << "Could not Load obj File: " << path << ".\n";
+		else
 		{
-			char lineHeader[128];
+			// Local for Extraction
+			string sInput;
+			vec3 vTempVec;
+			out_vertices.clear();
+			out_uvs.clear();
+			out_normals.clear();
+			out_vertIndicies.clear();
 
-			// read the first word of the line
-			int res = fscanf(file, "%s", lineHeader, 128);
-
-			if (res == EOF)
-				break; // EOF = End Of File. Quit the loop
-				
-			if (strcmp(lineHeader, "v") == 0) {
-				vec3 vertex;
-				fscanf(file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z);
-
-				// printf("vertex: (%f, %f, %f)\n",vertex.x, vertex.y, vertex.z);
-
-				out_vertices.push_back(vertex);
-			}
-			else if (strcmp(lineHeader, "vn") == 0) {
-				vec3 normal;
-				fscanf(file, "%f %f %f\n", &normal.x, &normal.y, &normal.z);
-
-				// printf("normal: (%f, %f, %f)\n",normal.x, normal.y, normal.z);
-
-				out_normals.push_back(normal);
-			}
-			else if ( strcmp( lineHeader, "vt" ) == 0 )
+			// Read through file.
+			while (getline(in, sInput))
 			{
-				vec2 uv;
-				fscanf(file, "%f %f\n", &uv.x, &uv.y );
+				stringstream ssLine(sInput);
+				string sToken;
 
-				// printf("uv: (%f, %f)\n",uv.x, uv.y);
+				// Read first token from line
+				ssLine >> sToken;
 
-				out_uvs.push_back(uv);	
-			}
-			else if ( strcmp( lineHeader, "f" ) == 0 )
-			{
-				std::string vertex1, vertex2, vertex3;
-				unsigned int vertexIndex[4], uvIndex[4], normalIndex[4];
-				//int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2] );
-				int matches = fscanf(file, "%d//%d %d//%d %d//%d %d//%d\n", &vertexIndex[0], &normalIndex[0], &vertexIndex[1], &normalIndex[1], &vertexIndex[2], &normalIndex[2], &vertexIndex[3], &normalIndex[3]);
-
-	
-				// printf("F: %d//%d %d//%d %d//%d\n matches: %d\n",vertexIndex[0], normalIndex[0], vertexIndex[1], normalIndex[1], vertexIndex[2], normalIndex[2],matches);
-
-				if (matches != 8) 
+				if ("v" == sToken)	// Vertex Data
 				{
-					printf("File can't be read, Try exporting with other options or ask Brad\n");
-					return false;
+					ssLine >> vTempVec.x >> vTempVec.y >> vTempVec.z;
+					out_vertices.push_back(vTempVec);
 				}
-				out_vertIndicies.push_back(vertexIndex[0]-1);
-				out_vertIndicies.push_back(vertexIndex[3]-1);
-				out_vertIndicies.push_back(vertexIndex[1]-1);
-				out_vertIndicies.push_back(vertexIndex[1]-1);
-				out_vertIndicies.push_back(vertexIndex[2]-1);
-				out_vertIndicies.push_back(vertexIndex[3]-1);
-				// uvIndices    .push_back(uvIndex[0]-1);
-				// uvIndices    .push_back(uvIndex[1]-1);
-				// uvIndices    .push_back(uvIndex[2]-1);
-				// normalIndices.push_back(normalIndex[0]-1);
-				// normalIndices.push_back(normalIndex[1]-1);
-				// normalIndices.push_back(normalIndex[2]-1);
-				//cin.get();
-			}
+				else if ("vt" == sToken) // uv-coords
+				{
+					ssLine >> vTempVec.x >> vTempVec.y;
+					out_uvs.push_back(vec2(vTempVec));
+				}
+				else if ("g" == sToken) // Group
+				{/* Ignored */
+				}
+				else if ("o" == sToken) // Object Name
+				{/* Ignored */
+				}
+				else if ("f" == sToken) // Face
+					break;
+			} // END While
+
+			  // Close file when finished.
+			in.close();
+
 		}
 
-		// Close the File once finished
-		fclose(file);
-		return true;
+		return bReturnValue;
 	}
+	
 } 
