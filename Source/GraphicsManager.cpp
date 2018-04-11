@@ -14,7 +14,7 @@ const mat3 WORLD_COORDS = mat3( 1.0 );
 const vector<vec3> AXIS_VERTS = { WORLD_CENTER, WORLD_COORDS[ 0 ],
 								  WORLD_CENTER, WORLD_COORDS[ 1 ],
 								  WORLD_CENTER, WORLD_COORDS[ 2 ] };
-const string LOW_POLY_LOC	= "models/lowPolyTerrain2.obj";
+const string LOW_POLY_LOC	= "models/plane.obj";
 const string HIGH_POLY_LOC	= "models/terrain2.obj";
 
 // Singleton Variable initialization

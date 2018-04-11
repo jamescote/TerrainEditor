@@ -34,7 +34,7 @@ Terrain::Terrain(const string& pTerrLoc)
 	m_fTileWidth = abs( m_vVertices[1].x - m_vStartPos.x);
 	m_iUSize = (unsigned int)ceil(m_fWidth / m_fTileWidth) + 1;
 	m_fTileDepth = abs(m_vVertices[m_iUSize].z - m_vStartPos.z);
-	m_iVSize = (unsigned int)ceil(m_fDepth / m_fTileDepth);
+	m_iVSize = (unsigned int)ceil(m_fDepth / m_fTileDepth) + 1;
 
 
 	unsigned int iArry[3] = {0, 1, 2};
