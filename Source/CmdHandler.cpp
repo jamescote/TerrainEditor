@@ -221,7 +221,7 @@ void CmdHandler::handleKeyBoardInput(int cKey, int iAction, int iMods)
 		switch ( cKey )
 		{
 			case(GLFW_KEY_S):			// Increment big radius
-				m_pGPXMngr->modifyHypoBigR( 0.1f );
+				m_pGPXMngr->saveSelection();
 				break;
 			case(GLFW_KEY_X):			// Decrement Big Radius
 				m_pGPXMngr->swapTerrains();
@@ -269,6 +269,9 @@ void CmdHandler::handleKeyBoardInput(int cKey, int iAction, int iMods)
 				break;
 			case( GLFW_KEY_W):
 				m_pGPXMngr->resetWeights();
+				break;
+			case( GLFW_KEY_Y):
+				m_pGPXMngr->toggleHeightMap();
 				break;
 		}
 	}

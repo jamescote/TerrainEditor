@@ -232,15 +232,29 @@ void GraphicsManager::modifyWeight( float fX, float fY, float fVal )
 
 }
 
-void GraphicsManager::selectFace(float fX, float fY)
+void GraphicsManager::moveSelector(float fX, float fY)
 {
 	vec3 vIntersection = getIntersection(fX, fY);
-	int i1, i2, i3;
 
 	if (vec3(-1.0) != vIntersection)
 	{
 		m_pTerrain[m_iCurrTerrain]->get_Point_Pos(vIntersection.x, vIntersection.z);
 	}
+}
+
+void GraphicsManager::selectPoint()
+{
+	m_pTerrain[m_iCurrTerrain]->lockPoint();
+}
+
+void GraphicsManager::saveSelection()
+{
+	m_pTerrain[m_iCurrTerrain]->saveSelection();
+}
+
+void GraphicsManager::toggleHeightMap()
+{
+	m_pTerrain[m_iCurrTerrain]->toggleHeightMap();
 }
 
 /*******************************************************************************\

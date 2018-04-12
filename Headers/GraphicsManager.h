@@ -79,8 +79,11 @@ public:
 	void resetCurve() { m_pNurbs->resetCurve(); }
 
 	// Terrain Manipulation
-	void selectFace(float fX, float fY);
+	void moveSelector(float fX, float fY);
+	void selectPoint();
+	void saveSelection();
 	void swapTerrains() { m_iCurrTerrain = (m_iCurrTerrain + 1) % 2; }
+	void toggleHeightMap();
 
 private:
 	// For Singleton Implementation

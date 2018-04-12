@@ -13,8 +13,9 @@ public:
 	void mouseTStart() 
 	{ 
 		m_bTranslateFlag = !m_bRotateFlag;
-		if ( m_bTranslateFlag )
-			m_pGpxMngr->controlPoint( m_pInitialPos.x, m_pInitialPos.y );
+		if (m_bTranslateFlag)
+			m_pGpxMngr->selectPoint();
+			//m_pGpxMngr->controlPoint( m_pInitialPos.x, m_pInitialPos.y );
 	}
 	void mouseTEnd() 
 	{ 

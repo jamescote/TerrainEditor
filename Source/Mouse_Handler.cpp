@@ -36,7 +36,7 @@ void Mouse_Handler::updateMouse(float fX, float fY)
 		m_pGpxMngr->rotateCamera(m_pInitialPos - vec2(fX, fY));
 	}
 
-	m_pGpxMngr->selectFace(fX, fY);
+	m_pGpxMngr->moveSelector(fX, fY);
 
 	// Set new current position
 	m_pInitialPos.x = fX;

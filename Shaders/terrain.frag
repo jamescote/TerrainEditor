@@ -40,7 +40,7 @@ void main(void)
 	
 	float widthScalar = clamp(dot(normalize(-P),N),0.5f,1.0f);
 
-    if(any(lessThan(vBC, vec3(0.02)*widthScalar)))
+    if(any(lessThan(vBC, vec3(0.075)*widthScalar)))
     {
 		color = vec4(0,0,0, 1.0);
 	}
