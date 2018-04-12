@@ -259,10 +259,10 @@ void CmdHandler::handleKeyBoardInput(int cKey, int iAction, int iMods)
 			case(GLFW_KEY_ENTER):		// Input Handling (TODO)
 				break;
 			case(GLFW_KEY_UP):
-				m_pGPXMngr->modifyOrder( 1 );
+				//TODO: Put here
 				break;
 			case(GLFW_KEY_DOWN):
-				m_pGPXMngr->modifyOrder( -1 );
+				m_pGPXMngr->reduce();
 				break;
 			case( GLFW_KEY_B ):
 				m_pGPXMngr->toggleAffine();

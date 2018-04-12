@@ -12,7 +12,10 @@ public:
 	void draw( );
 
 	void get_Triangle_Points(float fPosX, float fPosZ, int &index1, int &index2, int &index3);
-
+	void grow();
+	void reduce();
+	void reduceU(vector<vec3>& meshV, vector<vec3>& meshD, unsigned int uSize, unsigned int vSize);
+	void reduceV(vector<vec3>& meshV, vector<vec3>& meshD, unsigned int uSize, unsigned int vSize);
 private:
 	Terrain( const Terrain* pNewPlane );  // Protected Copy Constructor
 

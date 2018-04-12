@@ -81,7 +81,9 @@ public:
 	// Terrain Manipulation
 	void selectFace(float fX, float fY);
 	void swapTerrains() { m_iCurrTerrain = (m_iCurrTerrain + 1) % 2; }
-
+	void reduce();
+	void grow();
+	
 private:
 	// For Singleton Implementation
 	GraphicsManager(GLFWwindow* rWindow);

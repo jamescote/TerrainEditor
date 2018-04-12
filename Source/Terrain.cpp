@@ -10,6 +10,10 @@
 #define TILE_DEPTH (DEFAULT_DEPTH / (float)DEFAULT_U)
 #define PI					3.14159265f
 
+#define HALF 0.5f
+#define QUARTER 0.25f
+#define THREEQUARTER .75f
+
 // Constructor
 Terrain::Terrain(const string& pTerrLoc)
 {
@@ -19,11 +23,11 @@ Terrain::Terrain(const string& pTerrLoc)
 	vector<int> BCverts;
 	vector<vec2> uvs; 
 
-	objLoader::loadOBJ(pTerrLoc.data(),m_vVertices, m_vIndices, uvs, m_vNormals);
+	objLoader::loadOBJ(pTerrLoc.data(),m_vVertices, uvs, m_vNormals);
 
 
 	float fUV_Step_U = (float)(1 / DEFAULT_U);
-	float fUV_Step_V = (float)(1 / DEFAULT_V);
+	float fUV_Step_V = (float)(1 / DEFAULT_V); // are these needed? if so they should be updated to the correct values
 
 	m_vStartPos = m_vVertices.front();
 	m_vEndPos = m_vVertices.back();
@@ -32,13 +36,14 @@ Terrain::Terrain(const string& pTerrLoc)
 	m_fDepth = abs( m_vEndPos.z - m_vStartPos.z);
 
 	m_fTileWidth = abs( m_vVertices[1].x - m_vStartPos.x);
-	m_iUSize = (unsigned int)ceil(m_fWidth / m_fTileWidth) + 1;
+	m_iUSize = (unsigned int)round(m_fWidth / m_fTileWidth) + 1;
 	m_fTileDepth = abs(m_vVertices[m_iUSize].z - m_vStartPos.z);
-	m_iVSize = (unsigned int)ceil(m_fDepth / m_fTileDepth) + 1;
-
+	m_iVSize = (unsigned int)round(m_fDepth / m_fTileDepth) + 1;
 
 	unsigned int iArry[3] = {0, 1, 2};
 	unsigned int iX = 0;
+
+	objLoader::orderIndicies(m_iUSize, m_iVSize, m_vIndices);
 
 	BCverts.reserve( m_vIndices.size());
 
@@ -112,18 +117,19 @@ void Terrain::draw(  )
 
 	// Draw Points
 	ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::WORLD_SHDR, "vColor", &BLACK);
-	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::TERRAIN_GRID_SHDR));
+	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::WORLD_SHDR));
 	glPointSize( 5.0f );  // divide by 4th positon in the projected vector
 	glDrawArrays( GL_POINTS, 0, m_vVertices.size() );
+
 	//glDrawElements( GL_LINE_STRIP, m_vIndices.size(), GL_UNSIGNED_INT, 0 );
 
 	// Draw Mesh
 	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::TERRAIN_SHDR ) );
 	glDrawElements( GL_TRIANGLES, m_vIndices.size(), GL_UNSIGNED_INT, 0 );
 
-	glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(vec3), &m_vTempSelectedQuad, GL_STATIC_DRAW);
+	//glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(vec3), &m_vTempSelectedQuad, GL_STATIC_DRAW);
 
-	//glDrawArrays(GL_TRIANGLES, 0, 4);
+	//glDrawArrays(GL_POINTS, 0, m_vVertices.size());
 
 
 	/* Not Yet Implemented
@@ -165,6 +171,209 @@ void Terrain::get_Triangle_Points(float fPosX, float fPosZ, int &index1, int &in
 				index1 = iIndex4;
 	}
 
+}
+
+void Terrain::grow()
+{
+	// if (m_vVertices.size == m_iUSize*m_iVSize)
+	// {
+	// 	//add empty details
+	// }
+	// vector< vec3 > newMeshVerts.reserve((2*m_iUSize-1) * (2*m_iVSize-1));
+	// float C1, C2, C3, C4;
+
+	// C1 = m_vVertices.at(0);
+	// C2 = m_vVertices.at(1);
+	// C3 = m_vVertices.at(2);
+	// C4 = m_vVertices.at(3);
+
+	// newMeshVerts.push_back((-1/2) * C1) + (1 * C2) - ((3/4) * C3) + ((1/4) * C4);
+	// newMeshVerts.push_back(((-1/4) * C1) + ((3/4) * C2) - ((3/4) * C3) + ((1/4) * C4));
+
+	// int i = 3;
+
+	// for (; i < m_iUSize- 5; i+=2)
+	// {
+	// 	C1 = m_vVertices.at(i);
+	// 	C2 = m_vVertices.at(i+1);
+	// 	C3 = m_vVertices.at(i+2);
+	// 	C4 = m_vVertices.at(i+3);
+
+	// 	newMeshVerts.push_back(((-3/4)*C1) + ((3/4)*C2) + ((3/4)C3) - ((1/4)C4));
+	// }
+
+	// C1 = m_vVertices.at(i);
+	// C2 = m_vVertices.at(i+1);
+	// C3 = m_vVertices.at(i+2);
+	// C4 = m_vVertices.at(i+3);
+
+
+	// newMeshVerts.push_back(())
+
+	// newMeshVerts.push_back()
+}
+
+void Terrain::reduce()
+{
+	vector< vec3 > newMeshVerts;
+	vector< vec3 > newMeshDetails;
+	// newMeshVerts.reserve(m_vVertices.size()/2);
+	// newMeshDetails.reserve(m_vVertices.size()/2);
+
+	unsigned int uSize = m_iUSize;
+	unsigned int vSize = m_iVSize;
+	
+	// m_iUSize = m_iVSize/2 +1;
+	// m_vVertices = newMeshVerts;
+	// m_vIndices.clear();
+	// objLoader::orderIndicies(m_iUSize, m_iVSize, m_vIndices);
+	
+	
+	reduceU(newMeshVerts, newMeshDetails, m_iUSize, m_iVSize);
+	m_vVertices = newMeshVerts;
+	reduceV(newMeshVerts, newMeshDetails, m_iUSize, m_iVSize);
+	m_vVertices = newMeshVerts;
+
+	cout << m_vVertices.size() << endl;
+	cout << newMeshDetails.size() << endl;
+
+	for (int i = 0; i < newMeshVerts.size(); i++)
+	{
+		cout << "{" << newMeshVerts.at(i).x << "," << newMeshVerts.at(i).y << "," << newMeshVerts.at(i).z << "}\n"; 
+	}
+
+	m_vIndices.clear();
+	objLoader::orderIndicies(m_iUSize, m_iVSize, m_vIndices);
+
+}
+
+
+void Terrain::reduceV(vector<vec3>& out_meshV, vector<vec3>& out_meshD, unsigned int uSize, unsigned int vSize)
+{
+	vec3 C1, C2, C3, C4;
+	vector<vec3> meshV;
+	vector<vec3> meshD;
+	int i;
+
+	for (unsigned int v = 0; v < uSize; v++)
+	{
+		i = 0;
+
+		C1 = m_vVertices.at( v );
+		C2 = m_vVertices.at(v  +uSize);
+		C3 = m_vVertices.at(v+(2*uSize));
+		C4 = m_vVertices.at(v+(3*uSize));
+
+		meshV.push_back(C1);
+		meshV.push_back(((-HALF)*C1) + (1*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
+
+		meshD.push_back(((-HALF)*C1) + (1*C2) + ((-THREEQUARTER)*C3) + ((-QUARTER)*C4));
+
+
+		C1 = m_vVertices.at(v+(2*uSize));
+		C2 = m_vVertices.at(v+(3*uSize));
+		C3 = m_vVertices.at(v+(4*uSize));
+		C4 = m_vVertices.at(v+(5*uSize));
+		meshD.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((-THREEQUARTER)*C3) + ((QUARTER)*C4));
+
+
+		for (i=v+uSize*2; i < v+ ((vSize - 5) * uSize); i+=2*uSize)
+		{
+			C1 = m_vVertices.at( i );
+			C2 = m_vVertices.at(i+(uSize));
+			C3 = m_vVertices.at(i+(2*uSize));
+			C4 = m_vVertices.at(i+(3*uSize));
+
+			meshV.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
+
+
+			if (i >= v+(4*uSize))
+			{
+				meshD.push_back(((QUARTER)*C1) - ((THREEQUARTER)*C2) + ((THREEQUARTER)*C3) - ((QUARTER)*C4));
+			}
+		}
+	
+
+		C1 = m_vVertices.at( i );
+		C2 = m_vVertices.at(i+(uSize));
+		C3 = m_vVertices.at(i+(uSize*2));
+		C4 = m_vVertices.at(i+(uSize*3));
+
+
+		meshV.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((1)*C3) + ((-HALF)*C4));
+		meshD.push_back(((QUARTER)*C1) - ((THREEQUARTER)*C2) + ((1)*C3) - ((HALF)*C4));
+			
+		meshV.push_back(C4);
+
+	}
+	m_iVSize = vSize/2+1;
+	out_meshV = meshV;
+	out_meshD.insert( out_meshD.end(), meshD.begin(), meshD.end());
+}
+
+void Terrain::reduceU(vector<vec3>& out_meshV, vector<vec3>& out_meshD, unsigned int uSize, unsigned int vSize)
+{
+	vec3 C1, C2, C3, C4;
+	vector<vec3> meshV;
+	vector<vec3> meshD;
+	int i;
+
+	for (unsigned int v = 0; v < vSize; v++)
+	{
+		i = 0;
+
+		C1 = m_vVertices.at(( i ) + (v*uSize));
+		C2 = m_vVertices.at((i+1) + (v*uSize));
+		C3 = m_vVertices.at((i+2) + (v*uSize));
+		C4 = m_vVertices.at((i+3) + (v*uSize));
+
+		meshV.push_back(C1);
+	meshV.push_back(((-HALF)*C1) + (1*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
+
+		meshD.push_back(((-HALF)*C1) + (1*C2) + ((-THREEQUARTER)*C3) + ((-QUARTER)*C4));
+
+
+		C1 = m_vVertices.at((i+2) + (v*uSize));
+		C2 = m_vVertices.at((i+3) + (v*uSize));
+		C3 = m_vVertices.at((i+4) + (v*uSize));
+		C4 = m_vVertices.at((i+5) + (v*uSize));
+		meshD.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((-THREEQUARTER)*C3) + ((QUARTER)*C4));
+
+
+		for (i=2; i < uSize - 5; i+=2)
+		{
+			C1 = m_vVertices.at(( i ) + (v*uSize));
+			C2 = m_vVertices.at((i+1) + (v*uSize));
+			C3 = m_vVertices.at((i+2) + (v*uSize));
+			C4 = m_vVertices.at((i+3) + (v*uSize));
+
+			meshV.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
+
+
+
+			if (i >= 4)
+			{
+				meshD.push_back(((QUARTER)*C1) - ((THREEQUARTER)*C2) + ((THREEQUARTER)*C3) - ((QUARTER)*C4));
+			}
+		}
+	
+
+		C1 = m_vVertices.at(( i ) + (v*uSize));
+		C2 = m_vVertices.at((i+1) + (v*uSize));
+		C3 = m_vVertices.at((i+2) + (v*uSize));
+		C4 = m_vVertices.at((i+3) + (v*uSize));
+
+
+		meshV.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((1)*C3) + ((-HALF)*C4));
+	meshD.push_back(((QUARTER)*C1) - ((THREEQUARTER)*C2) + ((1)*C3) - ((HALF)*C4));
+			
+		meshV.push_back(C4);
+
+	}
+
+	m_iUSize = uSize/2+1;
+	out_meshV = meshV;
+	out_meshD.insert( out_meshD.end(), meshD.begin(), meshD.end());
 }
 
 void Terrain::get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iIndex2, int &iIndex3, int &iIndex4 )

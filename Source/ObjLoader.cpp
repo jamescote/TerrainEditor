@@ -2,7 +2,7 @@
 
 namespace objLoader
 {
-	bool loadOBJ(const char * path, vector<vec3>& out_vertices, vector<unsigned int>& out_vertIndicies, vector<vec2>& out_uvs, vector<vec3>& out_normals)
+	bool loadOBJ(const char * path, vector<vec3>& out_vertices, vector<vec2>& out_uvs, vector<vec3>& out_normals)
 	{
 		FILE * file = nullptr;
 		file = fopen( path, "r");
@@ -48,25 +48,26 @@ namespace objLoader
 			}
 			else if ( strcmp( lineHeader, "f" ) == 0 )
 			{
-				std::string vertex1, vertex2, vertex3;
-				unsigned int vertexIndex[4], uvIndex[4], normalIndex[4];
-				//int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2] );
-				int matches = fscanf(file, "%d//%d %d//%d %d//%d %d//%d\n", &vertexIndex[0], &normalIndex[0], &vertexIndex[1], &normalIndex[1], &vertexIndex[2], &normalIndex[2], &vertexIndex[3], &normalIndex[3]);
+				break;
+				// std::string vertex1, vertex2, vertex3;
+				// unsigned int vertexIndex[4], uvIndex[4], normalIndex[4];
+				// //int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2] );
+				// int matches = fscanf(file, "%d//%d %d//%d %d//%d %d//%d\n", &vertexIndex[0], &normalIndex[0], &vertexIndex[1], &normalIndex[1], &vertexIndex[2], &normalIndex[2], &vertexIndex[3], &normalIndex[3]);
 
 	
-				// printf("F: %d//%d %d//%d %d//%d\n matches: %d\n",vertexIndex[0], normalIndex[0], vertexIndex[1], normalIndex[1], vertexIndex[2], normalIndex[2],matches);
+				// // printf("F: %d//%d %d//%d %d//%d\n matches: %d\n",vertexIndex[0], normalIndex[0], vertexIndex[1], normalIndex[1], vertexIndex[2], normalIndex[2],matches);
 
-				if (matches != 8) 
-				{
-					printf("File can't be read, Try exporting with other options or ask Brad\n");
-					return false;
-				}
-				out_vertIndicies.push_back(vertexIndex[0]-1);
-				out_vertIndicies.push_back(vertexIndex[3]-1);
-				out_vertIndicies.push_back(vertexIndex[1]-1);
-				out_vertIndicies.push_back(vertexIndex[1]-1);
-				out_vertIndicies.push_back(vertexIndex[2]-1);
-				out_vertIndicies.push_back(vertexIndex[3]-1);
+				// if (matches != 8) 
+				// {
+				// 	printf("File can't be read, Try exporting with other options or ask Brad\n");
+				// 	return false;
+				// }
+				// out_vertIndicies.push_back(vertexIndex[0]-1);
+				// out_vertIndicies.push_back(vertexIndex[3]-1);
+				// out_vertIndicies.push_back(vertexIndex[1]-1);
+				// out_vertIndicies.push_back(vertexIndex[1]-1);
+				// out_vertIndicies.push_back(vertexIndex[2]-1);
+				// out_vertIndicies.push_back(vertexIndex[3]-1);
 				// uvIndices    .push_back(uvIndex[0]-1);
 				// uvIndices    .push_back(uvIndex[1]-1);
 				// uvIndices    .push_back(uvIndex[2]-1);
@@ -80,5 +81,27 @@ namespace objLoader
 		// Close the File once finished
 		fclose(file);
 		return true;
+	}
+
+
+	bool orderIndicies(const unsigned int& u_size, const unsigned int& v_size, vector<unsigned int>& out_vertIndicies)
+	{
+
+		for (unsigned int v = 0; v < v_size-1; v++)
+		{
+			for (unsigned int u = 0; u < u_size-1; u++)
+			{
+				unsigned int uu = u+(v*u_size);
+				// first tri
+				out_vertIndicies.push_back(uu);
+				out_vertIndicies.push_back(uu+1);
+				out_vertIndicies.push_back(uu+u_size);
+
+				// second tri
+				out_vertIndicies.push_back(uu+u_size);
+				out_vertIndicies.push_back(uu+u_size+1);
+				out_vertIndicies.push_back(uu+1);
+			}
+		}
 	}
 } 
