@@ -113,23 +113,23 @@ void Terrain::draw(  )
 	} //*/
 	glBindBuffer(GL_ARRAY_BUFFER, m_iVertexBuffer);
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, m_iIndicesBuffer );
-	glBufferData(GL_ARRAY_BUFFER, m_vVertices.size() * sizeof(vec3), m_vVertices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, m_iUSize*m_iVSize * sizeof(vec3), m_vVertices.data(), GL_STATIC_DRAW);
 
 	// Draw Points
 	ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::WORLD_SHDR, "vColor", &BLACK);
 	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::WORLD_SHDR));
 	glPointSize( 5.0f );  // divide by 4th positon in the projected vector
-	glDrawArrays( GL_POINTS, 0, m_vVertices.size() );
+	glDrawArrays( GL_POINTS, 0, m_iUSize*m_iVSize );
 
 	//glDrawElements( GL_LINE_STRIP, m_vIndices.size(), GL_UNSIGNED_INT, 0 );
 
 	// Draw Mesh
 	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::TERRAIN_SHDR ) );
-	glDrawElements( GL_TRIANGLES, m_vIndices.size(), GL_UNSIGNED_INT, 0 );
+	// glDrawElements( GL_TRIANGLES, m_vIndices.size(), GL_UNSIGNED_INT, 0 );
 
 	//glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(vec3), &m_vTempSelectedQuad, GL_STATIC_DRAW);
 
-	//glDrawArrays(GL_POINTS, 0, m_vVertices.size());
+	// glDrawArrays(GL_POINTS, 0, m_vVertices.size());
 
 
 	/* Not Yet Implemented
@@ -213,143 +213,92 @@ void Terrain::grow()
 	// newMeshVerts.push_back()
 }
 
-void Terrain::reduce()
+void Terrain::reduceTerrain()
 {
-	vector< vec3 > newMeshVerts;
-	vector< vec3 > newMeshDetails;
-	// newMeshVerts.reserve(m_vVertices.size()/2);
-	// newMeshDetails.reserve(m_vVertices.size()/2);
-
-	unsigned int uSize = m_iUSize;
-	unsigned int vSize = m_iVSize;
-	
-	// m_iUSize = m_iVSize/2 +1;
-	// m_vVertices = newMeshVerts;
-	// m_vIndices.clear();
-	// objLoader::orderIndicies(m_iUSize, m_iVSize, m_vIndices);
-	
-	
-	reduceU(newMeshVerts, newMeshDetails, m_iUSize, m_iVSize);
-	m_vVertices = newMeshVerts;
-	reduceV(newMeshVerts, newMeshDetails, m_iUSize, m_iVSize);
-	m_vVertices = newMeshVerts;
-
-	cout << m_vVertices.size() << endl;
-	cout << newMeshDetails.size() << endl;
-
-	for (int i = 0; i < newMeshVerts.size(); i++)
-	{
-		cout << "{" << newMeshVerts.at(i).x << "," << newMeshVerts.at(i).y << "," << newMeshVerts.at(i).z << "}\n"; 
-	}
-
+	reduce(m_vVertices, m_iUSize, m_iVSize);
 	m_vIndices.clear();
 	objLoader::orderIndicies(m_iUSize, m_iVSize, m_vIndices);
+}
+
+void Terrain::reduce(vector<vec3>& out_Mesh, unsigned int& uSize, unsigned int& vSize)
+{
+
+	flip(out_Mesh, uSize, vSize);
+	reduceU(out_Mesh, uSize, vSize);
+
+
+	flip(out_Mesh, uSize, vSize);
+	reduceU(out_Mesh, uSize, vSize);
+
 
 }
 
+void Terrain::flip(vector<vec3>& out_meshV, unsigned int& uSize, unsigned int& vSize)
+{
+	vector<vec3> flippedMesh;
+	for (unsigned int u = 0; u < uSize; u++)
+	{
+		for (unsigned int v = 0; v < vSize; v++)
+		{
+			flippedMesh.push_back(out_meshV.at(v*uSize + u));
+		}
+	}
 
-void Terrain::reduceV(vector<vec3>& out_meshV, vector<vec3>& out_meshD, unsigned int uSize, unsigned int vSize)
+	flippedMesh.insert(flippedMesh.end(), out_meshV.begin()+flippedMesh.size(), out_meshV.end());
+	out_meshV = flippedMesh;
+
+	uSize = uSize ^ vSize;
+	vSize = vSize ^ uSize;
+	uSize = uSize ^ vSize;
+}
+
+void Terrain::reduceU(vector<vec3>& out_meshV, unsigned int& uSize, unsigned int& vSize)
 {
 	vec3 C1, C2, C3, C4;
 	vector<vec3> meshV;
 	vector<vec3> meshD;
+	vector< vec3 > vApplicationCurve;
+	bool isOdd = uSize%2;
+	unsigned int tmpUSize = (isOdd)?uSize+1:uSize;
+
 	int i;
 
-	for (unsigned int v = 0; v < uSize; v++)
+	for (unsigned int v = 0; v < vSize; v++)
 	{
+		unsigned int vIndex = v*uSize;
+		for(int j = 0; j < uSize; ++j)
+			vApplicationCurve.push_back(out_meshV[j+vIndex]);
+
+		if( isOdd )
+			vApplicationCurve.push_back(vApplicationCurve.back());
+
 		i = 0;
 
-		C1 = m_vVertices.at( v );
-		C2 = m_vVertices.at(v  +uSize);
-		C3 = m_vVertices.at(v+(2*uSize));
-		C4 = m_vVertices.at(v+(3*uSize));
+		C1 = vApplicationCurve.at( i ); 
+		C2 = vApplicationCurve.at(i+1);
+		C3 = vApplicationCurve.at(i+2);
+		C4 = vApplicationCurve.at(i+3);
 
 		meshV.push_back(C1);
 		meshV.push_back(((-HALF)*C1) + (1*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
 
 		meshD.push_back(((-HALF)*C1) + (1*C2) + ((-THREEQUARTER)*C3) + ((-QUARTER)*C4));
 
-
-		C1 = m_vVertices.at(v+(2*uSize));
-		C2 = m_vVertices.at(v+(3*uSize));
-		C3 = m_vVertices.at(v+(4*uSize));
-		C4 = m_vVertices.at(v+(5*uSize));
+		C1 = vApplicationCurve.at( i+2 ); 
+		C2 = vApplicationCurve.at(i+3);
+		C3 = vApplicationCurve.at(i+4);
+		C4 = vApplicationCurve.at(i+5);
 		meshD.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((-THREEQUARTER)*C3) + ((QUARTER)*C4));
 
 
-		for (i=v+uSize*2; i < v+ ((vSize - 5) * uSize); i+=2*uSize)
+		for (i=2; i < vApplicationCurve.size() - 5; i+=2)
 		{
-			C1 = m_vVertices.at( i );
-			C2 = m_vVertices.at(i+(uSize));
-			C3 = m_vVertices.at(i+(2*uSize));
-			C4 = m_vVertices.at(i+(3*uSize));
+			C1 = vApplicationCurve.at( i );
+			C2 = vApplicationCurve.at(i+1);
+			C3 = vApplicationCurve.at(i+2);
+			C4 = vApplicationCurve.at(i+3);
 
 			meshV.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
-
-
-			if (i >= v+(4*uSize))
-			{
-				meshD.push_back(((QUARTER)*C1) - ((THREEQUARTER)*C2) + ((THREEQUARTER)*C3) - ((QUARTER)*C4));
-			}
-		}
-	
-
-		C1 = m_vVertices.at( i );
-		C2 = m_vVertices.at(i+(uSize));
-		C3 = m_vVertices.at(i+(uSize*2));
-		C4 = m_vVertices.at(i+(uSize*3));
-
-
-		meshV.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((1)*C3) + ((-HALF)*C4));
-		meshD.push_back(((QUARTER)*C1) - ((THREEQUARTER)*C2) + ((1)*C3) - ((HALF)*C4));
-			
-		meshV.push_back(C4);
-
-	}
-	m_iVSize = vSize/2+1;
-	out_meshV = meshV;
-	out_meshD.insert( out_meshD.end(), meshD.begin(), meshD.end());
-}
-
-void Terrain::reduceU(vector<vec3>& out_meshV, vector<vec3>& out_meshD, unsigned int uSize, unsigned int vSize)
-{
-	vec3 C1, C2, C3, C4;
-	vector<vec3> meshV;
-	vector<vec3> meshD;
-	int i;
-
-	for (unsigned int v = 0; v < vSize; v++)
-	{
-		i = 0;
-
-		C1 = m_vVertices.at(( i ) + (v*uSize));
-		C2 = m_vVertices.at((i+1) + (v*uSize));
-		C3 = m_vVertices.at((i+2) + (v*uSize));
-		C4 = m_vVertices.at((i+3) + (v*uSize));
-
-		meshV.push_back(C1);
-	meshV.push_back(((-HALF)*C1) + (1*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
-
-		meshD.push_back(((-HALF)*C1) + (1*C2) + ((-THREEQUARTER)*C3) + ((-QUARTER)*C4));
-
-
-		C1 = m_vVertices.at((i+2) + (v*uSize));
-		C2 = m_vVertices.at((i+3) + (v*uSize));
-		C3 = m_vVertices.at((i+4) + (v*uSize));
-		C4 = m_vVertices.at((i+5) + (v*uSize));
-		meshD.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((-THREEQUARTER)*C3) + ((QUARTER)*C4));
-
-
-		for (i=2; i < uSize - 5; i+=2)
-		{
-			C1 = m_vVertices.at(( i ) + (v*uSize));
-			C2 = m_vVertices.at((i+1) + (v*uSize));
-			C3 = m_vVertices.at((i+2) + (v*uSize));
-			C4 = m_vVertices.at((i+3) + (v*uSize));
-
-			meshV.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
-
-
 
 			if (i >= 4)
 			{
@@ -357,23 +306,27 @@ void Terrain::reduceU(vector<vec3>& out_meshV, vector<vec3>& out_meshD, unsigned
 			}
 		}
 	
-
-		C1 = m_vVertices.at(( i ) + (v*uSize));
-		C2 = m_vVertices.at((i+1) + (v*uSize));
-		C3 = m_vVertices.at((i+2) + (v*uSize));
-		C4 = m_vVertices.at((i+3) + (v*uSize));
-
+		C1 = vApplicationCurve.at( i );
+		C2 = vApplicationCurve.at(i+1);
+		C3 = vApplicationCurve.at(i+2);
+		C4 = vApplicationCurve.at(i+3);
 
 		meshV.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((1)*C3) + ((-HALF)*C4));
-	meshD.push_back(((QUARTER)*C1) - ((THREEQUARTER)*C2) + ((1)*C3) - ((HALF)*C4));
+		meshD.push_back(((QUARTER)*C1) - ((THREEQUARTER)*C2) + ((1)*C3) - ((HALF)*C4));
 			
 		meshV.push_back(C4);
 
+		vApplicationCurve.clear();
+
+		if( v == 0 )
+			tmpUSize = meshV.size();
+
 	}
 
-	m_iUSize = uSize/2+1;
+	meshV.insert( meshV.end(), meshD.begin(), meshD.end());
+	meshV.insert( meshV.end(), out_meshV.begin()+(uSize*vSize), out_meshV.end());
+	uSize = tmpUSize;
 	out_meshV = meshV;
-	out_meshD.insert( out_meshD.end(), meshD.begin(), meshD.end());
 }
 
 void Terrain::get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iIndex2, int &iIndex3, int &iIndex4 )

@@ -250,7 +250,7 @@ void GraphicsManager::grow()
 
 void GraphicsManager::reduce()
 {
-	m_pTerrain[m_iCurrTerrain]->reduce();
+	m_pTerrain[m_iCurrTerrain]->reduceTerrain();
 }
 /*******************************************************************************\
 * Shader Manipulation                                                          *

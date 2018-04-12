@@ -12,10 +12,9 @@ public:
 	void draw( );
 
 	void get_Triangle_Points(float fPosX, float fPosZ, int &index1, int &index2, int &index3);
-	void grow();
-	void reduce();
-	void reduceU(vector<vec3>& meshV, vector<vec3>& meshD, unsigned int uSize, unsigned int vSize);
-	void reduceV(vector<vec3>& meshV, vector<vec3>& meshD, unsigned int uSize, unsigned int vSize);
+	void grow();	
+	void reduce(vector<vec3>& out_Mesh, unsigned int& uSize, unsigned int& vSize);
+	void reduceTerrain();
 private:
 	Terrain( const Terrain* pNewPlane );  // Protected Copy Constructor
 
@@ -31,4 +30,6 @@ private:
 	GLuint m_iVertexArray, m_iBaryCentric, m_iVertexBuffer, m_iNormalBuffer, m_iTextureBuffer, m_iIndicesBuffer;
 
 	void get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iIndex2, int &iIndex3, int &iIndex4 );
+	void flip(vector<vec3>&, unsigned int&, unsigned int&);
+	void reduceU(vector<vec3>& meshV, unsigned int& uSize, unsigned int& vSize);
 };
