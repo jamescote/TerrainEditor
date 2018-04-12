@@ -3,7 +3,7 @@
 
 namespace objLoader
 {
-	bool loadOBJ(const char * path, vector<vec3>& out_vertices, vector<unsigned int>& out_vertIndicies, vector<vec2>& out_uvs, vector<vec3>& out_normals)
+	bool loadOBJ(const char * path, vector<vec3>& out_vertices, vector<vec2>& out_uvs, vector<vec3>& out_normals)
 	{
 		// Locals
 		ifstream in(path);
@@ -20,8 +20,7 @@ namespace objLoader
 			out_vertices.clear();
 			out_uvs.clear();
 			out_normals.clear();
-			out_vertIndicies.clear();
-
+			
 			// Read through file.
 			while (getline(in, sInput))
 			{

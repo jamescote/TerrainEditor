@@ -4,6 +4,10 @@
 #define PI					3.14159265f
 #define TWOPI				6.283185307f
 
+#define HALF 0.5f
+#define QUARTER 0.25f
+#define THREEQUARTER .75f
+
 // Constructor
 Terrain::Terrain(const string& pTerrLoc)
 {
@@ -18,8 +22,10 @@ Terrain::Terrain(const string& pTerrLoc)
 	m_iUSize = m_iVSize = 0;
 	m_fTileDepth = m_fTileWidth = -1.0f;
 	m_iLockedStart = -1;
+	m_iSelector = 0;
 
-	objLoader::loadOBJ(pTerrLoc.data(),m_vVertices, m_vIndices, uvs, m_vNormals);
+	objLoader::loadOBJ(pTerrLoc.data(),m_vVertices, uvs, m_vNormals);
+
 
 
 	calculateDimensions();
@@ -103,14 +109,15 @@ void Terrain::draw(  )
 	} //*/
 	glBindBuffer(GL_ARRAY_BUFFER, m_iVertexBuffer);
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, m_iIndicesBuffer );
-	glBufferData(GL_ARRAY_BUFFER, m_vVertices.size() * sizeof(vec3), m_vVertices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, m_iUSize*m_iVSize * sizeof(vec3), m_vVertices.data(), GL_STATIC_DRAW);
 
-	/* Draw Points
+	//* Draw Points
 	ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::WORLD_SHDR, "vColor", &BLACK);
-	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::TERRAIN_GRID_SHDR));
+	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::WORLD_SHDR));
 	glPointSize( 5.0f );  // divide by 4th positon in the projected vector
-	glDrawArrays( GL_POINTS, 0, m_vVertices.size() );
+	glDrawArrays( GL_POINTS, 0, m_iUSize*m_iVSize );
 //*/
+
 
 	// Draw Mesh
 	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::TERRAIN_SHDR ) );
@@ -159,7 +166,8 @@ void Terrain::draw(  )
 		glPointSize(1.0f);
 	}
 
-	//glDrawArrays(GL_TRIANGLES, 0, 4);
+
+	// glDrawArrays(GL_POINTS, 0, m_vVertices.size());
 
 
 	/* Not Yet Implemented
@@ -243,6 +251,162 @@ void Terrain::toggleHeightMap()
 		}
 	}
 
+}
+
+void Terrain::grow()
+{
+	// if (m_vVertices.size == m_iUSize*m_iVSize)
+	// {
+	// 	//add empty details
+	// }
+	// vector< vec3 > newMeshVerts.reserve((2*m_iUSize-1) * (2*m_iVSize-1));
+	// float C1, C2, C3, C4;
+
+	// C1 = m_vVertices.at(0);
+	// C2 = m_vVertices.at(1);
+	// C3 = m_vVertices.at(2);
+	// C4 = m_vVertices.at(3);
+
+	// newMeshVerts.push_back((-1/2) * C1) + (1 * C2) - ((3/4) * C3) + ((1/4) * C4);
+	// newMeshVerts.push_back(((-1/4) * C1) + ((3/4) * C2) - ((3/4) * C3) + ((1/4) * C4));
+
+	// int i = 3;
+
+	// for (; i < m_iUSize- 5; i+=2)
+	// {
+	// 	C1 = m_vVertices.at(i);
+	// 	C2 = m_vVertices.at(i+1);
+	// 	C3 = m_vVertices.at(i+2);
+	// 	C4 = m_vVertices.at(i+3);
+
+	// 	newMeshVerts.push_back(((-3/4)*C1) + ((3/4)*C2) + ((3/4)C3) - ((1/4)C4));
+	// }
+
+	// C1 = m_vVertices.at(i);
+	// C2 = m_vVertices.at(i+1);
+	// C3 = m_vVertices.at(i+2);
+	// C4 = m_vVertices.at(i+3);
+
+
+	// newMeshVerts.push_back(())
+
+	// newMeshVerts.push_back()
+}
+
+void Terrain::reduceTerrain()
+{
+	reduce(m_vVertices, m_iUSize, m_iVSize);
+	calculateDimensions();
+	generateIndices();
+}
+
+void Terrain::reduce(vector<vec3>& out_Mesh, unsigned int& uSize, unsigned int& vSize)
+{
+
+	flip(out_Mesh, uSize, vSize);
+	reduceU(out_Mesh, uSize, vSize);
+
+
+	flip(out_Mesh, uSize, vSize);
+	reduceU(out_Mesh, uSize, vSize);
+
+
+}
+
+void Terrain::flip(vector<vec3>& out_meshV, unsigned int& uSize, unsigned int& vSize)
+{
+	vector<vec3> flippedMesh;
+	for (unsigned int u = 0; u < uSize; u++)
+	{
+		for (unsigned int v = 0; v < vSize; v++)
+		{
+			flippedMesh.push_back(out_meshV.at(v*uSize + u));
+		}
+	}
+
+	flippedMesh.insert(flippedMesh.end(), out_meshV.begin()+flippedMesh.size(), out_meshV.end());
+	out_meshV = flippedMesh;
+
+	uSize = uSize ^ vSize;
+	vSize = vSize ^ uSize;
+	uSize = uSize ^ vSize;
+}
+
+void Terrain::reduceU(vector<vec3>& out_meshV, unsigned int& uSize, unsigned int& vSize)
+{
+	vec3 C1, C2, C3, C4;
+	vector<vec3> meshV;
+	vector<vec3> meshD;
+	vector< vec3 > vApplicationCurve;
+	bool isOdd = uSize%2;
+	unsigned int tmpUSize = (isOdd)?uSize+1:uSize;
+
+	int i;
+
+	for (unsigned int v = 0; v < vSize; v++)
+	{
+		unsigned int vIndex = v*uSize;
+		for(int j = 0; j < uSize; ++j)
+			vApplicationCurve.push_back(out_meshV[j+vIndex]);
+
+		if( isOdd )
+			vApplicationCurve.push_back(vApplicationCurve.back());
+
+		i = 0;
+
+		C1 = vApplicationCurve.at( i ); 
+		C2 = vApplicationCurve.at(i+1);
+		C3 = vApplicationCurve.at(i+2);
+		C4 = vApplicationCurve.at(i+3);
+
+		meshV.push_back(C1);
+		meshV.push_back(((-HALF)*C1) + (1*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
+
+		meshD.push_back(((-HALF)*C1) + (1*C2) + ((-THREEQUARTER)*C3) + ((-QUARTER)*C4));
+
+		C1 = vApplicationCurve.at( i+2 ); 
+		C2 = vApplicationCurve.at(i+3);
+		C3 = vApplicationCurve.at(i+4);
+		C4 = vApplicationCurve.at(i+5);
+		meshD.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((-THREEQUARTER)*C3) + ((QUARTER)*C4));
+
+
+		for (i=2; i < vApplicationCurve.size() - 5; i+=2)
+		{
+			C1 = vApplicationCurve.at( i );
+			C2 = vApplicationCurve.at(i+1);
+			C3 = vApplicationCurve.at(i+2);
+			C4 = vApplicationCurve.at(i+3);
+
+			meshV.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
+
+			if (i >= 4)
+			{
+				meshD.push_back(((QUARTER)*C1) - ((THREEQUARTER)*C2) + ((THREEQUARTER)*C3) - ((QUARTER)*C4));
+			}
+		}
+	
+		C1 = vApplicationCurve.at( i );
+		C2 = vApplicationCurve.at(i+1);
+		C3 = vApplicationCurve.at(i+2);
+		C4 = vApplicationCurve.at(i+3);
+
+		meshV.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((1)*C3) + ((-HALF)*C4));
+		meshD.push_back(((QUARTER)*C1) - ((THREEQUARTER)*C2) + ((1)*C3) - ((HALF)*C4));
+			
+		meshV.push_back(C4);
+
+		vApplicationCurve.clear();
+
+		if( v == 0 )
+			tmpUSize = meshV.size();
+
+	}
+
+	meshV.insert( meshV.end(), meshD.begin(), meshD.end());
+	meshV.insert( meshV.end(), out_meshV.begin()+(uSize*vSize), out_meshV.end());
+	uSize = tmpUSize;
+	out_meshV = meshV;
 }
 
 void Terrain::get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iIndex2, int &iIndex3, int &iIndex4 )

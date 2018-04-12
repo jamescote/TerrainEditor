@@ -85,6 +85,9 @@ public:
 	void swapTerrains() { m_iCurrTerrain = (m_iCurrTerrain + 1) % 2; }
 	void toggleHeightMap();
 
+	void reduce();
+	void grow();
+	
 private:
 	// For Singleton Implementation
 	GraphicsManager(GLFWwindow* rWindow);

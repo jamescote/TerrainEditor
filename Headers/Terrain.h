@@ -16,7 +16,9 @@ public:
 	void toggleHeightMap();
 	void lockPoint();
 	void saveSelection();
-
+	void grow();	
+	void reduce(vector<vec3>& out_Mesh, unsigned int& uSize, unsigned int& vSize);
+	void reduceTerrain();
 private:
 	Terrain( const Terrain* pNewPlane );  // Protected Copy Constructor
 
@@ -43,4 +45,6 @@ private:
 	GLuint m_iVertexArray, m_iBaryCentric, m_iVertexBuffer, m_iNormalBuffer, m_iTextureBuffer, m_iIndicesBuffer;
 
 	void get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iIndex2, int &iIndex3, int &iIndex4 );
+	void flip(vector<vec3>&, unsigned int&, unsigned int&);
+	void reduceU(vector<vec3>& meshV, unsigned int& uSize, unsigned int& vSize);
 };
