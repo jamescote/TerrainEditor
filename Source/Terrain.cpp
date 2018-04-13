@@ -296,7 +296,7 @@ void Terrain::growU(tMesh& terrain)
 		terrain.m_MrMap.pop();
 
 	// Extrude Details From Mesh
-	for (int v = 0; v < terrain.m_iVSize; v++)
+	for (unsigned int v = 0; v < terrain.m_iVSize; v++)
 	{
 		unsigned int vOffset = v*terrain.m_iUSize;
 		cout << "vOffset " << vOffset << endl;
@@ -346,7 +346,7 @@ void Terrain::growU(tMesh& terrain)
 
 		meshV.push_back(terrain.m_vVertices.at(vOffset) + E.at(vOffset));
 				cout << "vert 0 " << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
-		meshV.push_back((HALF * terrain.m_vVertices.at(vOffset)) + (H	 + (E.at(vOffset+1)));
+		meshV.push_back((HALF * terrain.m_vVertices.at(vOffset)) + (HALF	 + (E.at(vOffset+1)));
 				cout << "vert 1 " << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" <<endl; cin.get();
 				
 
@@ -375,8 +375,8 @@ void Terrain::growU(tMesh& terrain)
 		cout << "i " << i << "/" << terrain.m_iUSize << endl;
 		CII = terrain.m_vVertices.at(i);
 		
-		//meshV.push_back((HALF * CI) + (HALF * CII) + E.at(j)); // skip if mesh is size 2
-		//cout << "vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
+		meshV.push_back((HALF * CI) + (HALF * CII) + E.at(j)); // skip if mesh is size 2
+		cout << "vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
 		meshV.push_back(CII + E.at(j+1));
 		cout << "LAST vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
 

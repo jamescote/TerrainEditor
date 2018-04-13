@@ -1,1 +1,6 @@
-﻿
+﻿  Terrain.cpp
+u:\documents\cpsc 587\final project\jamesbranch\source\terrain.cpp(299): warning C4018: '<': signed/unsigned mismatch
+u:\documents\cpsc 587\final project\jamesbranch\source\terrain.cpp(349): error C2065: 'H': undeclared identifier
+u:\documents\cpsc 587\final project\jamesbranch\source\terrain.cpp(349): error C2059: syntax error: ';'
+  GraphicsManager.cpp
+  Generating Code...
