@@ -8,6 +8,8 @@ uniform float beta = 0.5;	// Amount of which the Color is visible in the Warm Te
 uniform float rc = 0.5;		// Red Value of the Object's Color
 uniform float gc = 0.5;		// Green Value of the Object's Color
 uniform float bc = 0.5;		// Blue Value of the Object's Color
+uniform vec3 vEdgeColor = vec3(0.0);
+uniform vec3 vColor = vec3(0.5);
 
 
 
@@ -25,7 +27,7 @@ uniform sampler2D mySampler;
 void main(void)
 {
 	//vec2 UV;
-	vec4 vObjColor = vec4( rc, gc, bc, 1.0f );
+	vec4 vObjColor = vec4( vColor, 1.0f );
 	//vec3 kCool;
 	//vec3 kWarm;
 	//vec4 textureColor;
@@ -42,7 +44,7 @@ void main(void)
 
     if(any(lessThan(vBC, vec3(0.075)*widthScalar)))
     {
-		color = vec4(0,0,0, 1.0);
+		color = vec4(vEdgeColor, 1.0);
 	}
 	else{
 		color = vObjColor;
