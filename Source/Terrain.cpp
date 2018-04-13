@@ -87,7 +87,7 @@ void Terrain::draw(  )
 	} //*/
 	
 
-	/* Draw Points
+	//* Draw Points
 	ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::WORLD_SHDR, "vColor", &BLACK);
 	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::WORLD_SHDR));
 	glPointSize( 5.0f );  // divide by 4th positon in the projected vector
@@ -274,6 +274,10 @@ void Terrain::grow(tMesh& terrain)
 
 		growU(terrain);
 		flip(terrain);
+
+		initMesh(terrain);
+
+		cout << "NEW SIZE " << terrain.m_iUSize * terrain.m_iVSize << endl;
 }
 
 void Terrain::growU(tMesh& terrain)
@@ -283,14 +287,14 @@ void Terrain::growU(tMesh& terrain)
 	vector<vec3> meshD;
 
 	vec3 D1,D2,D3;
-	
+	unsigned int tempU;
 
-	unsigned int detailOffset = terrain.m_MrMap.empty() ? 0 : terrain.m_MrMap.top().second;
-	cout << "detail Offset: " << detailOffset << endl; cin.get();
-	unsigned int remainSize = 0;
+
+	unsigned int detailEndPoint = terrain.m_MrMap.empty() ? 0 : terrain.m_MrMap.top().second;
+	unsigned int detailOffset = terrain.m_iUSize*terrain.m_iVSize;
+
 	bool bExtraPoint = terrain.m_MrMap.empty() ? false : terrain.m_MrMap.top().first;
 
-	cout << "bExtraPoint: " << bExtraPoint << endl; cin.get();
 
 	if( !terrain.m_MrMap.empty() )
 		terrain.m_MrMap.pop();
@@ -301,53 +305,66 @@ void Terrain::growU(tMesh& terrain)
 		unsigned int vOffset = v*terrain.m_iUSize;
 		cout << "vOffset " << vOffset << endl;
 
-		if( detailOffset != 0 )
+		if( detailEndPoint != 0 )
 		{
-			cout << "LOOKING FOR DAT D" << endl; cin.get();
+			cout << "detail Offset: " << detailOffset << endl; cin.get();
+			cout << "vert before details " << " {" << terrain.m_vVertices.at(detailOffset   + vOffset-1).x << ", " << terrain.m_vVertices.at(detailOffset   + vOffset-1).y << ", " << terrain.m_vVertices.at(detailOffset   + vOffset-1).z << "}" <<endl; cin.get();
+			
+			D1 = terrain.m_vVertices.at(detailOffset   + vOffset);
+			D2 = terrain.m_vVertices.at(detailOffset+1 + vOffset);
+			D3 = terrain.m_vVertices.at(detailOffset+2 + vOffset);
 
-			D1 = terrain.m_vVertices.at(detailOffset   + terrain.m_iUSize*v);
-			D2 = terrain.m_vVertices.at(detailOffset+1 + terrain.m_iUSize*v);
-			D3 = terrain.m_vVertices.at(detailOffset+2 + terrain.m_iUSize*v);
+			
 
+			
 			// Apply Starting Computation
 			E.push_back(vec3(0));	// E1 = 0 D1
+			cout << "detail " << E.size() << " {" << E.back().x << ", " << E.back().y << ", " << E.back().z << "}" <<endl; cin.get();
 			E.push_back(HALF * D1);	// E2 = 1/2 D1
+			cout << "detail " << E.size() << " {" << E.back().x << ", " << E.back().y << ", " << E.back().z << "}" <<endl; cin.get();
 			E.push_back((-THREEQUARTER * D1) + (QUARTER * D2));	// E3 = -3/4 D1 + 1/4 D2
+			cout << "detail " << E.size() << " {" << E.back().x << ", " << E.back().y << ", " << E.back().z << "}" <<endl; cin.get();
 			E.push_back((-QUARTER * D1) + (THREEQUARTER * D2));	// E4 = -1/4 D1 + 3/4 D2
+			cout << "detail " << E.size() << " {" << E.back().x << ", " << E.back().y << ", " << E.back().z << "}" <<endl; cin.get();
 			E.push_back((-THREEQUARTER * D2) - (QUARTER * D3));	// E5 = -3/4 D2 - 1/4 D3
+			cout << "detail " << E.size() << " {" << E.back().x << ", " << E.back().y << ", " << E.back().z << "}" <<endl; cin.get();
 			E.push_back((-QUARTER * D2) + (-THREEQUARTER * D3));	// E6 = -1/4 D2 - 3/4 D3
+			cout << "detail " << E.size() << " {" << E.back().x << ", " << E.back().y << ", " << E.back().z << "}" <<endl; cin.get();
 
 			unsigned int i;
-			for (i = 3; i < terrain.m_vVertices.size() - detailOffset - 1; i++)
+			cout << "in loop" << endl;
+			for (i = detailOffset+2; i < detailEndPoint - 1; i++)
 			{
+				
 				vec3 DI, DII;
-				DI = terrain.m_vVertices.at(detailOffset + i);
-				DII = terrain.m_vVertices.at(detailOffset + i+1);
+				DI = terrain.m_vVertices.at(i 	+ 	vOffset);
+				DII = terrain.m_vVertices.at(i+1 +	vOffset);
 				E.push_back((THREEQUARTER * DI) + (-QUARTER * DII));
 				E.push_back((QUARTER * DI) + (-THREEQUARTER * DII));
 			}
-
+			cout << "out loop" << endl;
 
 			// Final E Calculations
-			vec3 DS = terrain.m_vVertices.at(i);
+			vec3 DS = terrain.m_vVertices.at(i+vOffset);
 
 			E.push_back(HALF * DS);
+			cout << "detail " << E.size() << " {" << E.back().x << ", " << E.back().y << ", " << E.back().z << "}" <<endl; cin.get();
 			E.push_back(vec3(0));
-			remainSize = i; // details size
-			cout << "e size: " << E.size() << endl; cin.get();
+			cout << "detail " << E.size() << " {" << E.back().x << ", " << E.back().y << ", " << E.back().z << "}" <<endl; cin.get();
+			//	cout << "e size: " << E.size() << endl; cin.get();
 		}
 		else
-			E.resize(terrain.m_vVertices.size()+1, vec3(0)); //FIXME: +1 was a hack, remove if we can figure out why
+			E.resize(terrain.m_vVertices.size(), vec3(0)); //FIXME: +1 was a hack, remove if we can figure out why
 
 
 
-		cout << "e size: " << E.size() << endl; cin.get();
+		//cout << "e size: " << E.size() << endl; cin.get();
 
 
 		meshV.push_back(terrain.m_vVertices.at(vOffset) + E.at(vOffset));
-				cout << "vert 0 " << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
+		
 		meshV.push_back((HALF * terrain.m_vVertices.at(vOffset)) + (HALF * terrain.m_vVertices.at(vOffset+1)) + (E.at(vOffset+1)));
-				cout << "vert 1 " << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" <<endl; cin.get();
+			//	cout << "vert 1 " << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" <<endl; cin.get();
 				
 
 		unsigned int i;
@@ -356,33 +373,36 @@ void Terrain::growU(tMesh& terrain)
 		j = 2;
 
 		// *************E is incorrect for now since they are all zeros ****************
-		cout << "loop " << endl;
+		//cout << "loop " << endl;
 		for (i = 1; i < terrain.m_iUSize - 2; i++)
 		{	
 
 			CI = terrain.m_vVertices.at(i + vOffset);
 			CII = terrain.m_vVertices.at(i+1 + vOffset);
 			meshV.push_back((THREEQUARTER * CI) + (QUARTER * CII) + E.at(j));
-			cout << "vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
+			//cout << "vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
 		
 			meshV.push_back((QUARTER * CI) + (THREEQUARTER * CII) + E.at(j+1));
-			cout << "vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
+			//cout << "vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
 
 			j+=2;
 		}
-		cout << "end loop " << endl;
-		CI = terrain.m_vVertices.at(i-1);
+		//cout << "end loop " << endl;
+		CI = terrain.m_vVertices.at(i + vOffset);
 		cout << "i " << i << "/" << terrain.m_iUSize << endl;
-		CII = terrain.m_vVertices.at(i);
+		CII = terrain.m_vVertices.at(i+1 + vOffset);
 		
-		//meshV.push_back((HALF * CI) + (HALF * CII) + E.at(j)); // skip if mesh is size 2
+		meshV.push_back((HALF * CI) + (HALF * CII) + E.at(j)); // skip if mesh is size 2
 		//cout << "vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
 		meshV.push_back(CII + E.at(j+1));
-		cout << "LAST vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
+		//cout << "LAST vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
+
+		if (v == 0)
+			tempU = meshV.size();
+
 
 	}	
-
-
+	terrain.m_iUSize = tempU;
 	terrain.m_vVertices = meshV;
 }
 
