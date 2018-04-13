@@ -276,11 +276,10 @@ void Terrain::grow(tMesh& terrain)
 		flip(terrain);
 
 		initMesh(terrain);
-<<<<<<< HEAD
 
-		cout << "NEW SIZE " << terrain.m_iUSize * terrain.m_iVSize << endl;
-=======
->>>>>>> 22d1d194b7c41208d12e0f1de3d0853773b60733
+
+    //		cout << "NEW SIZE " << terrain.m_iUSize * terrain.m_iVSize << endl;
+
 }
 
 void Terrain::growU(tMesh& terrain)
@@ -406,7 +405,6 @@ void Terrain::growU(tMesh& terrain)
 	}	
 	terrain.m_iUSize = tempU;
 	terrain.m_vVertices = meshV;
-	terrain.m_iUSize = iNewUSize;
 }
 
 
