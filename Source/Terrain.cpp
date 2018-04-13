@@ -346,7 +346,7 @@ void Terrain::growU(tMesh& terrain)
 
 		meshV.push_back(terrain.m_vVertices.at(vOffset) + E.at(vOffset));
 				cout << "vert 0 " << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
-		meshV.push_back((HALF * terrain.m_vVertices.at(vOffset)) + (H	 + (E.at(vOffset+1)));
+		meshV.push_back((HALF * terrain.m_vVertices.at(vOffset)) + (HALF * terrain.m_vVertices.at(vOffset+1)) + (E.at(vOffset+1)));
 				cout << "vert 1 " << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" <<endl; cin.get();
 				
 
