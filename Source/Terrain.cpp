@@ -15,7 +15,6 @@ Terrain::Terrain(const string& pTerrLoc)
 	// Set up generation for Terrain
 	// Length = U
 	// Width = V
-	vector<int> BCverts;
 	vector<vec2> uvs; 
 
 	vector<vec3> mVerts, mNorms;
@@ -39,28 +38,6 @@ Terrain::Terrain(const string& pTerrLoc)
 	generateIndices(); //TODO: Update for tMesh
 	generateNormals(); //TODO: Update for tMesh
 
-
-	
-
-
-	unsigned int iArry[3] = {0, 1, 2};
-	unsigned int iX = 0;
-
-	BCverts.reserve( m_defaultTerrain.m_vIndices.size());
-
-	for( unsigned int v = 0; v < m_defaultTerrain.m_iVSize; ++v )
-	{
-		for( unsigned int u = 0; u < m_defaultTerrain.m_iUSize; u += 3)
-		{
-			BCverts.push_back(iArry[iX]);
-			if( u + 1 < m_defaultTerrain.m_iUSize )
-				BCverts.push_back(iArry[(iX + 1) % 3]);
-			if( u + 2 < m_defaultTerrain.m_iUSize )
-				BCverts.push_back(iArry[(iX + 2) % 3]);
-		}
-		iX = (iX + 2) % 3;
-	}
-
 	glGenVertexArrays( 1, &m_iVertexArray );
 
 	m_iVertexBuffer = ShaderManager::getInstance()->genVertexBuffer( m_iVertexArray,
@@ -68,8 +45,8 @@ Terrain::Terrain(const string& pTerrLoc)
 																	 m_defaultTerrain.m_vVertices.size() * sizeof( glm::vec3 ), GL_STATIC_DRAW );
 
 	m_iBaryCentric = ShaderManager::getInstance()->genVertexBuffer( m_iVertexArray,
-									    							 1, 1, BCverts.data(),
-																	 BCverts.size() * sizeof( int ), GL_STATIC_DRAW );
+									    							 1, 1, nullptr,
+																	 0, GL_STATIC_DRAW );
 
 	m_iNormalBuffer = ShaderManager::getInstance()->genVertexBuffer( m_iVertexArray,
 																	 2, 3, m_defaultTerrain.m_vNormals.data(),
@@ -84,6 +61,7 @@ Terrain::Terrain(const string& pTerrLoc)
 																	 m_defaultTerrain.m_vIndices.size() * sizeof( unsigned int ),
 																	 GL_STATIC_DRAW );
 
+	calculateBarries();
 }
 
 // Destructor
@@ -361,6 +339,7 @@ void Terrain::reduceTerrain()
 	reduce(m_defaultTerrain);
 	calculateDimensions();
 	generateIndices();
+	calculateBarries();
 }
 
 void Terrain::reduce(tMesh& terrain)
@@ -414,8 +393,11 @@ void Terrain::reduceU(tMesh& terrain)
 		for(int j = 0; j < terrain.m_iUSize; ++j)
 			vApplicationCurve.push_back(terrain.m_vVertices[j+vIndex]);
 
-		if( isOdd )
-			vApplicationCurve.push_back(vApplicationCurve.back());
+		if (isOdd)
+		{	
+			vec3 vTranslateVector = vApplicationCurve.back() - *(vApplicationCurve.end() - 2);
+			vApplicationCurve.push_back(vApplicationCurve.back() + vec3(vTranslateVector.x, 0.0f, vTranslateVector.z));
+		}
 
 		i = 0;
 
@@ -610,15 +592,26 @@ void Terrain::calculateDimensions()
 		m_defaultTerrain.m_fDepth = abs(m_defaultTerrain.m_vEndPos.z - m_defaultTerrain.m_vStartPos.z);
 
 		m_defaultTerrain.m_fTileWidth = abs(m_defaultTerrain.m_vVertices[1].x - m_defaultTerrain.m_vStartPos.x);
-		m_defaultTerrain.m_iUSize = (unsigned int)round(m_defaultTerrain.m_fWidth / m_defaultTerrain.m_fTileWidth) + 1;
+		
+
+		if (m_defaultTerrain.m_iUSize == 0 || m_defaultTerrain.m_iVSize == 0)
+		{
+			for (vector<vec3>::const_iterator iter = m_defaultTerrain.m_vVertices.begin();
+				iter->z == m_defaultTerrain.m_vStartPos.z;
+				++iter)
+				m_defaultTerrain.m_iUSize++;
+			for (vector<vec3>::const_iterator iter = m_defaultTerrain.m_vVertices.begin();
+				iter != m_defaultTerrain.m_vVertices.end() && iter->x == m_defaultTerrain.m_vStartPos.x;
+				iter += m_defaultTerrain.m_iUSize)
+				m_defaultTerrain.m_iVSize++;
+		}
 		m_defaultTerrain.m_fTileDepth = abs(m_defaultTerrain.m_vVertices[m_defaultTerrain.m_iUSize].z - m_defaultTerrain.m_vStartPos.z);
-		m_defaultTerrain.m_iVSize = (unsigned int)round(m_defaultTerrain.m_fDepth / m_defaultTerrain.m_fTileDepth) + 1;
 	}
 	else
 		cout << "Unable to compute dimensions; no vertices loaded.\n";
 }
 
-void Terrain::generateIndices()
+void Terrain::generateIndices( )
 {
 	if (!m_defaultTerrain.m_vVertices.empty())
 	{
@@ -646,6 +639,36 @@ void Terrain::generateIndices()
 	}
 	else
 		cout << "Unable to generate Indices; no vertices loaded.\n";
+}
+
+void Terrain::calculateBarries()
+{
+	if (!m_defaultTerrain.m_vIndices.empty())
+	{
+		unsigned int iArry[3] = { 0, 1, 2 };
+		unsigned int iX = 0;
+
+		vector<unsigned int> BCverts;
+		BCverts.reserve(m_defaultTerrain.m_vIndices.size());
+
+		for (unsigned int v = 0; v < m_defaultTerrain.m_iVSize; ++v)
+		{
+			for (unsigned int u = 0; u < m_defaultTerrain.m_iUSize; u += 3)
+			{
+				BCverts.push_back(iArry[iX]);
+				if (u + 1 < m_defaultTerrain.m_iUSize)
+					BCverts.push_back(iArry[(iX + 1) % 3]);
+				if (u + 2 < m_defaultTerrain.m_iUSize)
+					BCverts.push_back(iArry[(iX + 2) % 3]);
+			}
+			iX = (iX + 2) % 3;
+		}
+
+		glBindVertexArray(m_iVertexArray);
+		glBindBuffer(GL_ARRAY_BUFFER, m_iBaryCentric);
+		glBufferData(GL_ARRAY_BUFFER, BCverts.size() * sizeof(unsigned int), BCverts.data(), GL_STATIC_DRAW);
+		glBindVertexArray(0);
+	}
 }
 
 // Computes and Generates Normals per vertex.

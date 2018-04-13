@@ -51,6 +51,7 @@ private:
 	void calculateDimensions();
 	void generateIndices();
 	void generateNormals();
+	void calculateBarries();
 	void getSelectedArea(unsigned int &iStartU, unsigned int &iStartV, unsigned int& iEndU, unsigned int& iEndV);
 
 	GLuint m_iVertexArray, m_iBaryCentric, m_iVertexBuffer, m_iNormalBuffer, m_iTextureBuffer, m_iIndicesBuffer;
