@@ -274,6 +274,8 @@ void Terrain::grow(tMesh& terrain)
 
 		growU(terrain);
 		flip(terrain);
+
+		initMesh(terrain);
 }
 
 void Terrain::growU(tMesh& terrain)
@@ -286,11 +288,10 @@ void Terrain::growU(tMesh& terrain)
 	
 
 	unsigned int detailOffset = terrain.m_MrMap.empty() ? 0 : terrain.m_MrMap.top().second;
-	cout << "detail Offset: " << detailOffset << endl; cin.get();
 	unsigned int remainSize = 0;
+	unsigned int iNewUSize = 0;
 	bool bExtraPoint = terrain.m_MrMap.empty() ? false : terrain.m_MrMap.top().first;
 
-	cout << "bExtraPoint: " << bExtraPoint << endl; cin.get();
 
 	if( !terrain.m_MrMap.empty() )
 		terrain.m_MrMap.pop();
@@ -299,12 +300,9 @@ void Terrain::growU(tMesh& terrain)
 	for (unsigned int v = 0; v < terrain.m_iVSize; v++)
 	{
 		unsigned int vOffset = v*terrain.m_iUSize;
-		cout << "vOffset " << vOffset << endl;
 
 		if( detailOffset != 0 )
 		{
-			cout << "LOOKING FOR DAT D" << endl; cin.get();
-
 			D1 = terrain.m_vVertices.at(detailOffset   + terrain.m_iUSize*v);
 			D2 = terrain.m_vVertices.at(detailOffset+1 + terrain.m_iUSize*v);
 			D3 = terrain.m_vVertices.at(detailOffset+2 + terrain.m_iUSize*v);
@@ -334,20 +332,13 @@ void Terrain::growU(tMesh& terrain)
 			E.push_back(HALF * DS);
 			E.push_back(vec3(0));
 			remainSize = i; // details size
-			cout << "e size: " << E.size() << endl; cin.get();
 		}
 		else
-			E.resize(terrain.m_vVertices.size()+1, vec3(0)); //FIXME: +1 was a hack, remove if we can figure out why
-
-
-
-		cout << "e size: " << E.size() << endl; cin.get();
+			E.resize(terrain.m_vVertices.size(), vec3(0)); //FIXME: +1 was a hack, remove if we can figure out why
 
 
 		meshV.push_back(terrain.m_vVertices.at(vOffset) + E.at(vOffset));
-				cout << "vert 0 " << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
-		meshV.push_back((HALF * terrain.m_vVertices.at(vOffset)) + (HALF	 + (E.at(vOffset+1)));
-				cout << "vert 1 " << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" <<endl; cin.get();
+		meshV.push_back((HALF * terrain.m_vVertices.at(vOffset)) + (HALF * terrain.m_vVertices.at(vOffset+1)) + (E.at(vOffset+1)));
 				
 
 		unsigned int i;
@@ -356,34 +347,29 @@ void Terrain::growU(tMesh& terrain)
 		j = 2;
 
 		// *************E is incorrect for now since they are all zeros ****************
-		cout << "loop " << endl;
 		for (i = 1; i < terrain.m_iUSize - 2; i++)
 		{	
 
 			CI = terrain.m_vVertices.at(i + vOffset);
 			CII = terrain.m_vVertices.at(i+1 + vOffset);
 			meshV.push_back((THREEQUARTER * CI) + (QUARTER * CII) + E.at(j));
-			cout << "vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
-		
 			meshV.push_back((QUARTER * CI) + (THREEQUARTER * CII) + E.at(j+1));
-			cout << "vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
 
 			j+=2;
 		}
-		cout << "end loop " << endl;
-		CI = terrain.m_vVertices.at(i-1);
-		cout << "i " << i << "/" << terrain.m_iUSize << endl;
-		CII = terrain.m_vVertices.at(i);
+		CI = terrain.m_vVertices.at(i-1 + vOffset);
+		CII = terrain.m_vVertices.at(i + vOffset);
 		
 		meshV.push_back((HALF * CI) + (HALF * CII) + E.at(j)); // skip if mesh is size 2
-		cout << "vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
 		meshV.push_back(CII + E.at(j+1));
-		cout << "LAST vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
 
+		if (0 == v)
+			iNewUSize = meshV.size();
 	}	
 
 
 	terrain.m_vVertices = meshV;
+	terrain.m_iUSize = iNewUSize;
 }
 
 
@@ -574,12 +560,15 @@ void Terrain::get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iInd
 	{
 		unsigned int uOffset = m_vApplicationMesh.m_iUSize >> 1;
 		unsigned int vOffset = m_vApplicationMesh.m_iVSize >> 1;
+		unsigned int iOddU = 1 - (m_defaultTerrain.m_iUSize % 2);
+		unsigned int iOddV = 1 - (m_defaultTerrain.m_iVSize % 2);
 		float fHalfAppWidth = uOffset * m_defaultTerrain.m_fTileWidth;
 		float fHalfAppDepth = vOffset * m_defaultTerrain.m_fTileDepth;
-		u = (fPosX > (m_defaultTerrain.m_vEndPos.x - fHalfAppWidth)) ? (m_defaultTerrain.m_iUSize - 2) - uOffset : -1;
+		u = (fPosX > (m_defaultTerrain.m_vEndPos.x - fHalfAppWidth) - (iOddU * m_defaultTerrain.m_fTileWidth)) ? (m_defaultTerrain.m_iUSize - 2) - uOffset + iOddU: -1;
 		v = (fPosZ < m_defaultTerrain.m_vStartPos.z + fHalfAppDepth) ? vOffset : -1;
 		u = (fPosX < m_defaultTerrain.m_vStartPos.x + fHalfAppWidth) ? uOffset : u;
-		v = (fPosZ > m_defaultTerrain.m_vEndPos.z - fHalfAppDepth) ? m_defaultTerrain.m_iVSize - 2 - vOffset : v;
+		v = (fPosZ > m_defaultTerrain.m_vEndPos.z - fHalfAppDepth - (iOddV * m_defaultTerrain.m_fTileDepth)) ? m_defaultTerrain.m_iVSize - 2 - vOffset + iOddV : v;
+
 	}
 
 	vOffset = vec3(fPosX, 0.0, fPosZ) - vec3(m_defaultTerrain.m_vStartPos.x, 0.0, m_defaultTerrain.m_vStartPos.z);
@@ -745,6 +734,7 @@ void Terrain::applyTerrain(const Terrain* pTerrain)
 				m_vCurrentSubset.clear();
 				m_iLockedStart = -1;
 				m_vSavedSubset.clear();
+
 			}
 				   
 		}
