@@ -344,7 +344,7 @@ void Terrain::reduceTerrain()
 
 void Terrain::reduce(tMesh& terrain)
 {
-	if( m_defaultTerrain.m_iUSize != MRLIMIT_MIN && m_defaultTerrain.m_iVSize != MRLIMIT_MIN )
+	if( m_defaultTerrain.m_iUSize >= MRLIMIT_MIN && m_defaultTerrain.m_iVSize >= MRLIMIT_MIN )
 	{
 		flip(terrain);
 		reduceU(terrain);
