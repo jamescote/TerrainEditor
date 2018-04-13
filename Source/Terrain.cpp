@@ -276,8 +276,11 @@ void Terrain::grow(tMesh& terrain)
 		flip(terrain);
 
 		initMesh(terrain);
+<<<<<<< HEAD
 
 		cout << "NEW SIZE " << terrain.m_iUSize * terrain.m_iVSize << endl;
+=======
+>>>>>>> 22d1d194b7c41208d12e0f1de3d0853773b60733
 }
 
 void Terrain::growU(tMesh& terrain)
@@ -300,10 +303,9 @@ void Terrain::growU(tMesh& terrain)
 		terrain.m_MrMap.pop();
 
 	// Extrude Details From Mesh
-	for (int v = 0; v < terrain.m_iVSize; v++)
+	for (unsigned int v = 0; v < terrain.m_iVSize; v++)
 	{
 		unsigned int vOffset = v*terrain.m_iUSize;
-		cout << "vOffset " << vOffset << endl;
 
 		if( detailEndPoint != 0 )
 		{
@@ -404,6 +406,7 @@ void Terrain::growU(tMesh& terrain)
 	}	
 	terrain.m_iUSize = tempU;
 	terrain.m_vVertices = meshV;
+	terrain.m_iUSize = iNewUSize;
 }
 
 
@@ -594,12 +597,15 @@ void Terrain::get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iInd
 	{
 		unsigned int uOffset = m_vApplicationMesh.m_iUSize >> 1;
 		unsigned int vOffset = m_vApplicationMesh.m_iVSize >> 1;
+		unsigned int iOddU = 1 - (m_defaultTerrain.m_iUSize % 2);
+		unsigned int iOddV = 1 - (m_defaultTerrain.m_iVSize % 2);
 		float fHalfAppWidth = uOffset * m_defaultTerrain.m_fTileWidth;
 		float fHalfAppDepth = vOffset * m_defaultTerrain.m_fTileDepth;
-		u = (fPosX > (m_defaultTerrain.m_vEndPos.x - fHalfAppWidth)) ? (m_defaultTerrain.m_iUSize - 2) - uOffset : -1;
+		u = (fPosX > (m_defaultTerrain.m_vEndPos.x - fHalfAppWidth) - (iOddU * m_defaultTerrain.m_fTileWidth)) ? (m_defaultTerrain.m_iUSize - 2) - uOffset + iOddU: -1;
 		v = (fPosZ < m_defaultTerrain.m_vStartPos.z + fHalfAppDepth) ? vOffset : -1;
 		u = (fPosX < m_defaultTerrain.m_vStartPos.x + fHalfAppWidth) ? uOffset : u;
-		v = (fPosZ > m_defaultTerrain.m_vEndPos.z - fHalfAppDepth) ? m_defaultTerrain.m_iVSize - 2 - vOffset : v;
+		v = (fPosZ > m_defaultTerrain.m_vEndPos.z - fHalfAppDepth - (iOddV * m_defaultTerrain.m_fTileDepth)) ? m_defaultTerrain.m_iVSize - 2 - vOffset + iOddV : v;
+
 	}
 
 	vOffset = vec3(fPosX, 0.0, fPosZ) - vec3(m_defaultTerrain.m_vStartPos.x, 0.0, m_defaultTerrain.m_vStartPos.z);
@@ -765,6 +771,7 @@ void Terrain::applyTerrain(const Terrain* pTerrain)
 				m_vCurrentSubset.clear();
 				m_iLockedStart = -1;
 				m_vSavedSubset.clear();
+
 			}
 				   
 		}
