@@ -263,72 +263,96 @@ void Terrain::growU(tMesh& terrain)
 	vec3 D1,D2,D3;
 	
 
-	float detailOffset = terrain.m_MrMap.empty() ? terrain.m_vVertices.size() : terrain.m_MrMap.top().second;
+	unsigned int detailOffset = terrain.m_MrMap.empty() ? 0 : terrain.m_MrMap.top().second;
+	cout << "detail Offset: " << detailOffset << endl; cin.get();
 	unsigned int remainSize = 0;
 	bool bExtraPoint = terrain.m_MrMap.empty() ? false : terrain.m_MrMap.top().first;
+
+	cout << "bExtraPoint: " << bExtraPoint << endl; cin.get();
 
 	if( !terrain.m_MrMap.empty() )
 		terrain.m_MrMap.pop();
 
 	// Extrude Details From Mesh
-	if( detailOffset != terrain.m_vVertices.size() )
+	for (int v = 0; v < terrain.m_iVSize - 1; v++)
 	{
-		D1 = terrain.m_vVertices.at(detailOffset  );
-		D2 = terrain.m_vVertices.at(detailOffset+1);
-		D3 = terrain.m_vVertices.at(detailOffset+2);
 
-		// Apply Starting Computation
-		E.push_back(vec3(0));	// E1 = 0 D1
-		E.push_back(HALF * D1);	// E2 = 1/2 D1
-		E.push_back((-THREEQUARTER * D1) + (QUARTER * D2));	// E3 = -3/4 D1 + 1/4 D2
-		E.push_back((-QUARTER * D1) + (THREEQUARTER * D2));	// E4 = -1/4 D1 + 3/4 D2
-		E.push_back((-THREEQUARTER * D2) - (QUARTER * D3));	// E5 = -3/4 D2 - 1/4 D3
-		E.push_back((-QUARTER * D2) + (-THREEQUARTER * D3));	// E6 = -1/4 D2 - 3/4 D3
+		if( detailOffset != 0 )
+		{
+			cout << "LOOKING FOR DAT D" << endl; cin.get();
+
+			D1 = terrain.m_vVertices.at(detailOffset   + terrain.m_iUSize*v);
+			D2 = terrain.m_vVertices.at(detailOffset+1 + terrain.m_iUSize*v);
+			D3 = terrain.m_vVertices.at(detailOffset+2 + terrain.m_iUSize*v);
+
+			// Apply Starting Computation
+			E.push_back(vec3(0));	// E1 = 0 D1
+			E.push_back(HALF * D1);	// E2 = 1/2 D1
+			E.push_back((-THREEQUARTER * D1) + (QUARTER * D2));	// E3 = -3/4 D1 + 1/4 D2
+			E.push_back((-QUARTER * D1) + (THREEQUARTER * D2));	// E4 = -1/4 D1 + 3/4 D2
+			E.push_back((-THREEQUARTER * D2) - (QUARTER * D3));	// E5 = -3/4 D2 - 1/4 D3
+			E.push_back((-QUARTER * D2) + (-THREEQUARTER * D3));	// E6 = -1/4 D2 - 3/4 D3
+
+			unsigned int i;
+			for (i = 3; i < terrain.m_vVertices.size() - detailOffset - 1; i++)
+			{
+				vec3 DI, DII;
+				DI = terrain.m_vVertices.at(detailOffset + i);
+				DII = terrain.m_vVertices.at(detailOffset + i+1);
+				E.push_back((THREEQUARTER * DI) + (-QUARTER * DII));
+				E.push_back((QUARTER * DI) + (-THREEQUARTER * DII));
+			}
+
+
+			// Final E Calculations
+			vec3 DS = terrain.m_vVertices.at(i);
+
+			E.push_back(HALF * DS);
+			E.push_back(vec3(0));
+			remainSize = i; // details size
+			cout << "e size: " << E.size() << endl; cin.get();
+		}
+		else
+			E.resize(terrain.m_vVertices.size()+1, vec3(0)); //FIXME: +1 was a hack, remove if we can figure out why
+
+
+
+		cout << "e size: " << E.size() << endl; cin.get();
+
+
+		meshV.push_back(terrain.m_vVertices.at(v) + E.at(v));
+				cout << "vert 0 " << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
+		meshV.push_back((HALF * terrain.m_vVertices.at(v)) + (HALF * terrain.m_vVertices.at(v+1)) + (E.at(v+1)));
+				cout << "vert 1 " << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" <<endl; cin.get();
 
 		unsigned int i;
-		for (i = 3; i < terrain.m_vVertices.size() - detailOffset - 1; i++)
-		{
-			vec3 DI, DII;
-			DI = terrain.m_vVertices.at(detailOffset + i);
-			DII = terrain.m_vVertices.at(detailOffset + i+1);
-			E.push_back((THREEQUARTER * DI) + (-QUARTER * DII));
-			E.push_back((QUARTER * DI) + (-THREEQUARTER * DII));
+		unsigned int j;
+		vec3 CI,CII;
+		j = 3;
+
+		cout << "this " << terrain.m_iUSize << " should be less than " << terrain.m_vVertices.size() << endl;
+		for (i = 2; i < terrain.m_iUSize - 2; i+=2)
+		{	
+
+			CI = terrain.m_vVertices.at(i);
+			CII = terrain.m_vVertices.at(i+1);
+			meshV.push_back((THREEQUARTER * CI) + (QUARTER * CII) + E.at(j));
+			cout << "vert " << i << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
+			meshV.push_back((QUARTER * CI) + (THREEQUARTER * CII) + E.at(j+1));
+			cout << "vert " << i+1 << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
+
+
+			j+=2;
 		}
 
-		// Final E Calculations
-		vec3 DS = terrain.m_vVertices.at(i);
-
-		E.push_back(HALF * DS);
-		E.push_back(vec3(0));
-		remainSize = i; // details size
-	}
-	else
-		E.resize(detailOffset, vec3(0));
-
-
-	meshV.push_back(terrain.m_vVertices.at(0) + E.at(0));
-	meshV.push_back((HALF * terrain.m_vVertices.at(0)) + (HALF * terrain.m_vVertices.at(1)) + (E.at(1)));
-
-	
-	unsigned int i;
-	unsigned int j;
-	vec3 CI,CII;
-	j = 3;
-	for (i = 2; i < terrain.m_vVertices.size(); i++)
-	{	
 		CI = terrain.m_vVertices.at(i);
 		CII = terrain.m_vVertices.at(i+1);
-		meshV.push_back((THREEQUARTER * CI) + (QUARTER * CII) + E.at(j));
-		meshV.push_back((QUARTER * CI) + (THREEQUARTER * CII) + E.at(j+1));
-
-		j+=2;
-	}
-	CI = terrain.m_vVertices.at(i);
-	CII = terrain.m_vVertices.at(i+1);
-	
-	meshV.push_back((HALF * CI) + (HALF * CII) + E.at(j));
-	meshV.push_back(CII + E.at(j+1));
-
+		
+		meshV.push_back((HALF * CI) + (HALF * CII) + E.at(j));
+		cout << "vert " << i << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
+		meshV.push_back(CII + E.at(j+1));
+		cout << "vert " << i+1 << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
+	}	
 	terrain.m_vVertices = meshV;
 
 
@@ -346,12 +370,11 @@ void Terrain::reduce(tMesh& terrain)
 {
 	if( m_defaultTerrain.m_iUSize >= MRLIMIT_MIN && m_defaultTerrain.m_iVSize >= MRLIMIT_MIN )
 	{
-		flip(terrain);
 		reduceU(terrain);
-
-
 		flip(terrain);
+
 		reduceU(terrain);
+		flip(terrain);
 	}
 
 
@@ -387,16 +410,21 @@ void Terrain::reduceU(tMesh& terrain)
 
 	int i;
 
+	pair <bool, unsigned int> newMrMap;
+
 	for (unsigned int v = 0; v < terrain.m_iVSize; v++)
 	{
 		unsigned int vIndex = v*terrain.m_iUSize;
 		for(int j = 0; j < terrain.m_iUSize; ++j)
 			vApplicationCurve.push_back(terrain.m_vVertices[j+vIndex]);
 
+		newMrMap.first = false;
+
 		if (isOdd)
 		{	
 			vec3 vTranslateVector = vApplicationCurve.back() - *(vApplicationCurve.end() - 2);
 			vApplicationCurve.push_back(vApplicationCurve.back() + vec3(vTranslateVector.x, 0.0f, vTranslateVector.z));
+			newMrMap.first = true;
 		}
 
 		i = 0;
@@ -449,7 +477,8 @@ void Terrain::reduceU(tMesh& terrain)
 			tmpUSize = meshV.size();
 
 	}
-
+	newMrMap.second = meshD.size();
+	m_defaultTerrain.m_MrMap.push(newMrMap);
 	meshV.insert( meshV.end(), meshD.begin(), meshD.end());
 	meshV.insert( meshV.end(), terrain.m_vVertices.begin()+(terrain.m_iUSize*terrain.m_iVSize), terrain.m_vVertices.end());
 	terrain.m_iUSize = tmpUSize;
