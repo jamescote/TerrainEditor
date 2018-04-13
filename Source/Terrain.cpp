@@ -296,9 +296,10 @@ void Terrain::growU(tMesh& terrain)
 		terrain.m_MrMap.pop();
 
 	// Extrude Details From Mesh
-	for (int v = 0; v < terrain.m_iVSize - 1; v++)
-	if( detailOffset != 0 )
+	for (int v = 0; v < terrain.m_iVSize; v++)
 	{
+		unsigned int vOffset = v*terrain.m_iUSize;
+		cout << "vOffset " << vOffset << endl;
 
 		if( detailOffset != 0 )
 		{
@@ -343,43 +344,48 @@ void Terrain::growU(tMesh& terrain)
 		cout << "e size: " << E.size() << endl; cin.get();
 
 
-		meshV.push_back(terrain.m_vVertices.at(v) + E.at(v));
+		meshV.push_back(terrain.m_vVertices.at(vOffset) + E.at(vOffset));
 				cout << "vert 0 " << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
-		meshV.push_back((HALF * terrain.m_vVertices.at(v)) + (HALF * terrain.m_vVertices.at(v+1)) + (E.at(v+1)));
+		meshV.push_back((HALF * terrain.m_vVertices.at(vOffset)) + (H	 + (E.at(vOffset+1)));
 				cout << "vert 1 " << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" <<endl; cin.get();
+				
 
 		unsigned int i;
 		unsigned int j;
 		vec3 CI,CII;
-		j = 3;
+		j = 2;
 
-		cout << "this " << terrain.m_iUSize << " should be less than " << terrain.m_vVertices.size() << endl;
-		for (i = 2; i < terrain.m_iUSize - 2; i+=2)
+		// *************E is incorrect for now since they are all zeros ****************
+		cout << "loop " << endl;
+		for (i = 1; i < terrain.m_iUSize - 2; i++)
 		{	
 
-			CI = terrain.m_vVertices.at(i);
-			CII = terrain.m_vVertices.at(i+1);
+			CI = terrain.m_vVertices.at(i + vOffset);
+			CII = terrain.m_vVertices.at(i+1 + vOffset);
 			meshV.push_back((THREEQUARTER * CI) + (QUARTER * CII) + E.at(j));
-			cout << "vert " << i << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
+			cout << "vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
+		
 			meshV.push_back((QUARTER * CI) + (THREEQUARTER * CII) + E.at(j+1));
-			cout << "vert " << i+1 << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
-
+			cout << "vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
 
 			j+=2;
 		}
-
-		CI = terrain.m_vVertices.at(i);
-		CII = terrain.m_vVertices.at(i+1);
+		cout << "end loop " << endl;
+		CI = terrain.m_vVertices.at(i-1);
+		cout << "i " << i << "/" << terrain.m_iUSize << endl;
+		CII = terrain.m_vVertices.at(i);
 		
-		meshV.push_back((HALF * CI) + (HALF * CII) + E.at(j));
-		cout << "vert " << i << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
+		//meshV.push_back((HALF * CI) + (HALF * CII) + E.at(j)); // skip if mesh is size 2
+		//cout << "vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
 		meshV.push_back(CII + E.at(j+1));
-		cout << "vert " << i+1 << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
+		cout << "LAST vert " << meshV.size() << " {" << meshV.back().x << ", " << meshV.back().y << ", " << meshV.back().z << "}" << endl; cin.get();
+
 	}	
+
+
 	terrain.m_vVertices = meshV;
-
-
 }
+
 
 /********************************************************************\
  * Reverse Subdivision Section                                      *
