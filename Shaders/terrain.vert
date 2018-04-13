@@ -4,6 +4,7 @@ uniform mat4 modelview;
 uniform mat4 projection;
 uniform vec3 lightPosition;
 
+
 layout (location = 0) in vec3 vertex;
 layout (location = 1) in int bc;
 layout (location = 2) in vec3 normal;

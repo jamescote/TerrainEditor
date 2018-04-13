@@ -4,6 +4,7 @@
 #define PI					3.14159265f
 #define TWOPI				6.283185307f
 #define MRLIMIT_MIN			5
+#define MIN_BLEND_RS		3
 
 #define HALF 0.5f
 #define QUARTER 0.25f
@@ -19,25 +20,18 @@ Terrain::Terrain(const string& pTerrLoc)
 
 	vector<vec3> mVerts, mNorms;
 
-	m_defaultTerrain.m_vEndPos = m_defaultTerrain.m_vStartPos = vec3(0.0f);
-	m_defaultTerrain.m_fWidth = m_defaultTerrain.m_fDepth = -1.0f;
-	m_defaultTerrain.m_iUSize = m_defaultTerrain.m_iVSize = 0;
-	m_defaultTerrain.m_fTileDepth = m_defaultTerrain.m_fTileWidth = -1.0f;
-
+	// Initialize Data.
 	m_iLockedStart = -1;
 	m_iSelector = 0;
+	m_bHeightMapStored = m_bApplicationMode = false;
 
-	objLoader::loadOBJ(pTerrLoc.data(),mVerts, uvs, mNorms);
+	// Load the OBJ File; pulls Verts, UVS and Normals
+	objLoader::loadOBJ(pTerrLoc.data(), m_defaultTerrain.m_vVertices, m_defaultTerrain.m_vUVs, m_defaultTerrain.m_vNormals);
 
-	m_defaultTerrain.m_vVertices = mVerts;
-	m_defaultTerrain.m_vNormals = mNorms;
-	m_defaultTerrain.m_vUVs = uvs;
-	//m_defaultTerrain.m_vNormals;
+	// Initialize Mesh Details
+	initMesh(m_defaultTerrain);
 
-	calculateDimensions(); //TODO: Update for tMesh
-	generateIndices(); //TODO: Update for tMesh
-	generateNormals(); //TODO: Update for tMesh
-
+	// Generate Open GL Buffers
 	glGenVertexArrays( 1, &m_iVertexArray );
 
 	m_iVertexBuffer = ShaderManager::getInstance()->genVertexBuffer( m_iVertexArray,
@@ -61,7 +55,6 @@ Terrain::Terrain(const string& pTerrLoc)
 																	 m_defaultTerrain.m_vIndices.size() * sizeof( unsigned int ),
 																	 GL_STATIC_DRAW );
 
-	calculateBarries();
 }
 
 // Destructor
@@ -78,13 +71,13 @@ Terrain::~Terrain()
 // Setup OpenGl to draw the Terrain using the Plane Shader.
 void Terrain::draw(  )
 {
-
-
 	// Colors for drawing
 	vec3 RED = vec3(1.0, 0.0, 0.0);
+	vec3 TERRAIN_COLOR = vec3(0.586f, 0.551f, 0.598f);
 	vec3 BLACK = vec3(0.0);
 	vec3 BLUE = vec3(0.0, 0.0, 1.0);
 	vec3 WHITE = vec3(1.0);
+	vec3 GREEN = vec3(0.0, 1.0f, 0.0f);
 
 	glBindVertexArray( m_iVertexArray );
 	/* Not yet Implemented
@@ -92,68 +85,76 @@ void Terrain::draw(  )
 	{
 		m_pTexture->bindTexture( ShaderManager::eShaderType::PLANE_SHDR, "gSampler" );
 	} //*/
-	glBindBuffer(GL_ARRAY_BUFFER, m_iVertexBuffer);
-	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, m_iIndicesBuffer );
-	glBufferData(GL_ARRAY_BUFFER, m_defaultTerrain.m_iUSize*m_defaultTerrain.m_iVSize * sizeof(vec3), m_defaultTerrain.m_vVertices.data(), GL_STATIC_DRAW);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_defaultTerrain.m_vIndices.size() * sizeof(unsigned int), m_defaultTerrain.m_vIndices.data(), GL_DYNAMIC_DRAW );
+	
 
-	//* Draw Points
+	/* Draw Points
 	ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::WORLD_SHDR, "vColor", &BLACK);
 	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::WORLD_SHDR));
 	glPointSize( 5.0f );  // divide by 4th positon in the projected vector
 	glDrawArrays( GL_POINTS, 0, m_defaultTerrain.m_iUSize*m_defaultTerrain.m_iVSize );
 //*/
 
-
-	// Draw Mesh
-	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::TERRAIN_SHDR ) );
-	glDrawElements( GL_TRIANGLES, m_defaultTerrain.m_vIndices.size(), GL_UNSIGNED_INT, 0 );
-
-	ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::WORLD_SHDR, "vColor", &RED);
-	glUseProgram(ShaderManager::getInstance()->getProgram(ShaderManager::eShaderType::WORLD_SHDR));
-	
+	// Draw Additional Selections
+	ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::WORLD_SHDR, "vColor", &RED );
 	vector< vec3 > vTempVerts;
-	if (-1 != m_iLockedStart)
+	vTempVerts.push_back(m_defaultTerrain.m_vVertices[m_iSelector]);
+
+	if (-1 != m_iLockedStart || m_bApplicationMode) // Generate a list of Selected Vertices
 	{
 		unsigned int iStartU, iStartV, iEndU, iEndV;
-		getSelectedArea(iStartU, iStartV, iEndU, iEndV);;
-		for (unsigned int u = iStartU; u <= iEndU; ++u)
-			for (unsigned int v = iStartV; v <= iEndV; ++v)
+		getSelectedArea(iStartU, iStartV, iEndU, iEndV);
+		vTempVerts.clear();
+		for (unsigned int u = iStartU; (m_bApplicationMode ? u < iEndU : u <= iEndU); ++u)
+			for (unsigned int v = iStartV; (m_bApplicationMode ? v < iEndV : v <= iEndV); ++v)
 				vTempVerts.push_back(m_defaultTerrain.m_vVertices[u + (v*m_defaultTerrain.m_iUSize)]);
 	}
-	else if( !m_vCurrentSubset.empty() )
+	else if( !m_vCurrentSubset.m_vVertices.empty() ) // Draw the Currently Selected Subset
 	{
-		glBufferData(GL_ARRAY_BUFFER, m_vCurrentSubset.size() * sizeof(vec3), m_vCurrentSubset.data(), GL_STATIC_DRAW);
-		glPointSize(7.0f);  // divide by 4th positon in the projected vector
-		glDrawArrays(GL_POINTS, 0, m_vCurrentSubset.size());
-		glPointSize(1.0f);
-		vTempVerts.push_back(m_defaultTerrain.m_vVertices[m_iSelector]);
+		ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::TERRAIN_SHDR, "vColor", &RED);
+		glUseProgram(ShaderManager::getInstance()->getProgram(ShaderManager::eShaderType::TERRAIN_SHDR));
+		loadMeshData(m_vCurrentSubset);
+		glDrawElements(GL_TRIANGLES, m_vCurrentSubset.m_vIndices.size(), GL_UNSIGNED_INT, 0);
+
+		// Set the Cursor Color to be White
 		ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::WORLD_SHDR, "vColor", &WHITE);
+	}
+
+	if (m_bApplicationMode)
+	{
+		// Load Application Mesh Draw Information
+		loadMeshData(m_vApplicationMesh);
+		glBindBuffer(GL_ARRAY_BUFFER, m_iVertexBuffer);
+		glBufferData(GL_ARRAY_BUFFER, vTempVerts.size() * sizeof(vec3), vTempVerts.data(), GL_STATIC_DRAW);
+		glUseProgram(ShaderManager::getInstance()->getProgram(ShaderManager::eShaderType::TERRAIN_SHDR));
+		ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::TERRAIN_SHDR, "vColor", &GREEN);
+		glDrawElements(GL_TRIANGLES, m_vApplicationMesh.m_vIndices.size(), GL_UNSIGNED_INT, 0);
 	}
 	else
 	{
-		vTempVerts.push_back(m_defaultTerrain.m_vVertices[m_iSelector]);
-	}
-	
-	glBufferData(GL_ARRAY_BUFFER, vTempVerts.size() * sizeof(vec3), vTempVerts.data(), GL_STATIC_DRAW);
-	glPointSize(7.0f);  // divide by 4th positon in the projected vector
-	glDrawArrays(GL_POINTS, 0, vTempVerts.size());
-	glPointSize(1.0f);
-
-	// Draw Saved Selection
-	if (!m_vSavedSubset.empty())
-	{
-		ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::WORLD_SHDR, "vColor", &BLUE);
-		glBufferData(GL_ARRAY_BUFFER, m_vSavedSubset.size() * sizeof(vec3), m_vSavedSubset.data(), GL_STATIC_DRAW);
-		glPointSize(7.0f);  // divide by 4th positon in the projected vector
-		glDrawArrays(GL_POINTS, 0, m_vSavedSubset.size());
+		glBindBuffer(GL_ARRAY_BUFFER, m_iVertexBuffer);
+		glBufferData(GL_ARRAY_BUFFER, vTempVerts.size() * sizeof(vec3), vTempVerts.data(), GL_STATIC_DRAW);
+		glUseProgram(ShaderManager::getInstance()->getProgram(ShaderManager::eShaderType::WORLD_SHDR));
+		glPointSize(10.0f);  // divide by 4th positon in the projected vector
+		glDrawArrays(GL_POINTS, 0, vTempVerts.size());
 		glPointSize(1.0f);
 	}
 
+	// Draw Saved Selection
+	if (!m_vSavedSubset.m_vVertices.empty() && !m_bApplicationMode)
+	{
+		ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::TERRAIN_SHDR, "vColor", &BLUE);
+		glUseProgram(ShaderManager::getInstance()->getProgram(ShaderManager::eShaderType::TERRAIN_SHDR));
+		loadMeshData(m_vSavedSubset);
+		
+		glDrawElements(GL_TRIANGLES, m_vSavedSubset.m_vIndices.size(), GL_UNSIGNED_INT, 0);
+		
+	}
 
-	// glDrawArrays(GL_POINTS, 0, m_vVertices.size());
-
-
+	// Draw Main Terrain
+	loadMeshData(m_defaultTerrain);
+	ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::TERRAIN_SHDR, "vColor", &TERRAIN_COLOR);
+	glUseProgram(ShaderManager::getInstance()->getProgram(ShaderManager::eShaderType::TERRAIN_SHDR));
+	glDrawElements(GL_TRIANGLES, m_defaultTerrain.m_vIndices.size(), GL_UNSIGNED_INT, 0);
 	/* Not Yet Implemented
 	if ( nullptr != m_pTexture )
 		m_pTexture->unbindTexture();
@@ -161,6 +162,21 @@ void Terrain::draw(  )
 
 	glUseProgram(0);
 	glBindVertexArray( 0 );
+}
+
+void Terrain::loadMeshData(const tMesh& pTerrain)
+{
+	// Reload Vertices
+	glBindBuffer(GL_ARRAY_BUFFER, m_iVertexBuffer);
+	glBufferData(GL_ARRAY_BUFFER, pTerrain.m_iUSize*pTerrain.m_iVSize * sizeof(vec3), pTerrain.m_vVertices.data(), GL_STATIC_DRAW);
+
+	// Reload Indices
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_iIndicesBuffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, pTerrain.m_vIndices.size() * sizeof(unsigned int), pTerrain.m_vIndices.data(), GL_STATIC_DRAW);
+
+	// Reload BaryCentricCoords
+	glBindBuffer(GL_ARRAY_BUFFER, m_iBaryCentric);
+	glBufferData(GL_ARRAY_BUFFER, pTerrain.m_vBarries.size() * sizeof(unsigned int), pTerrain.m_vBarries.data(), GL_STATIC_DRAW);
 }
 
 void Terrain::get_Triangle_Points(float fPosX, float fPosZ, int &index1, int &index2, int &index3)
@@ -214,13 +230,16 @@ void Terrain::get_Triangle_Points(float fPosX, float fPosZ, int &index1, int &in
 
 }
 
+// Flattens Terrain to xz-plane. Will restore the y-values if they've already been stored.
 void Terrain::toggleHeightMap()
 {
+	// Only apply if Vertices are loaded.
 	if (!m_defaultTerrain.m_vVertices.empty())
 	{
-		if (m_defaultTerrain.m_vHeightMap.empty())
-			m_defaultTerrain.m_vHeightMap.resize(m_defaultTerrain.m_iUSize * m_defaultTerrain.m_iVSize, 0.0f);
+		if (m_vHeightMap.empty())
+			m_vHeightMap.resize(m_defaultTerrain.m_iUSize * m_defaultTerrain.m_iVSize, 0.0f);
 
+		// Loop Through and swap HeightMap Values
 		float fTemp;
 		for (unsigned int u = 0; u < m_defaultTerrain.m_iUSize; ++u)
 		{
@@ -228,11 +247,14 @@ void Terrain::toggleHeightMap()
 			{
 				unsigned int iIndex = u + (v*m_defaultTerrain.m_iUSize);
 				fTemp = m_defaultTerrain.m_vVertices[iIndex].y;
-				m_defaultTerrain.m_vVertices[iIndex].y = m_defaultTerrain.m_vHeightMap[iIndex];
-				m_defaultTerrain.m_vHeightMap[iIndex] = fTemp;
+				m_defaultTerrain.m_vVertices[iIndex].y = m_vHeightMap[iIndex];
+				m_vHeightMap[iIndex] = fTemp;
 
 			}
 		}
+
+		// Toggle Height Map Check.
+		m_bHeightMapStored = !m_bHeightMapStored;
 	}
 
 }
@@ -240,18 +262,18 @@ void Terrain::toggleHeightMap()
 void Terrain::growTerrain()
 {
 	grow(m_defaultTerrain);
-	calculateDimensions();
-	generateIndices();
+	calculateDimensions( m_defaultTerrain);
+	generateIndices(m_defaultTerrain);
 }
 
 void Terrain::grow(tMesh& terrain)
 {
 
-		flip(terrain);
 		growU(terrain);
+		flip(terrain);
 
-		flip(terrain);
 		growU(terrain);
+		flip(terrain);
 }
 
 void Terrain::growU(tMesh& terrain)
@@ -275,6 +297,7 @@ void Terrain::growU(tMesh& terrain)
 
 	// Extrude Details From Mesh
 	for (int v = 0; v < terrain.m_iVSize - 1; v++)
+	if( detailOffset != 0 )
 	{
 
 		if( detailOffset != 0 )
@@ -358,30 +381,47 @@ void Terrain::growU(tMesh& terrain)
 
 }
 
+/********************************************************************\
+ * Reverse Subdivision Section                                      *
+\********************************************************************/
+
+// Reduces Main Terrain
 void Terrain::reduceTerrain()
 {
+	// Turn on HeightMap before Reverse Subdividing.
+	bool bReturn = m_bHeightMapStored;
+	if (m_bHeightMapStored)
+		toggleHeightMap();
+
+	// Reduce
 	reduce(m_defaultTerrain);
-	calculateDimensions();
-	generateIndices();
-	calculateBarries();
+
+	if (bReturn)
+		toggleHeightMap();
 }
 
+// Given a Terrain Mesh, Reverse Subdivide it. Set our min limit to MRLIMIT_MIN
 void Terrain::reduce(tMesh& terrain)
 {
-	if( m_defaultTerrain.m_iUSize >= MRLIMIT_MIN && m_defaultTerrain.m_iVSize >= MRLIMIT_MIN )
+	if( terrain.m_iUSize >= MRLIMIT_MIN && terrain.m_iVSize >= MRLIMIT_MIN )
 	{
-		reduceU(terrain);
+		// Flip to Apply U-Reverse Subdivision on V-Direction first
 		flip(terrain);
+		reduceU(terrain);
 
-		reduceU(terrain);
+		// Flip again to apply U-Rverse Subdivision on U-Direction second
 		flip(terrain);
+		reduceU(terrain);
+
 	}
 
-
+	initMesh(terrain);
 }
 
+// Transposes the Vertices of a Mesh, preserving the Details Information.
 void Terrain::flip(tMesh& terrain)
 {
+	//Flip Vertices
 	vector<vec3> flippedMesh;
 	for (unsigned int u = 0; u < terrain.m_iUSize; u++)
 	{
@@ -391,35 +431,43 @@ void Terrain::flip(tMesh& terrain)
 		}
 	}
 
+	// Append on Details Information
 	flippedMesh.insert(flippedMesh.end(), terrain.m_vVertices.begin()+flippedMesh.size(), terrain.m_vVertices.end());
 	terrain.m_vVertices = flippedMesh;
 
+	// Swap U and V sizes
 	terrain.m_iUSize = terrain.m_iUSize ^ terrain.m_iVSize;
 	terrain.m_iVSize = terrain.m_iVSize ^ terrain.m_iUSize;
 	terrain.m_iUSize = terrain.m_iUSize ^ terrain.m_iVSize;
 }
 
+// Apply Reverse Subdivision on terrain (in the U-direction)
 void Terrain::reduceU(tMesh& terrain)
 {
+	// Local Variables
 	vec3 C1, C2, C3, C4;
 	vector<vec3> meshV;
 	vector<vec3> meshD;
 	vector< vec3 > vApplicationCurve;
 	bool isOdd = terrain.m_iUSize%2 != 0;
 	unsigned int tmpUSize;
-
-	int i;
+	unsigned int i;
 
 	pair <bool, unsigned int> newMrMap;
 
+	// Loop for Each U-Curve on Mesh
 	for (unsigned int v = 0; v < terrain.m_iVSize; v++)
 	{
+		// Index into Row of Mesh
 		unsigned int vIndex = v*terrain.m_iUSize;
-		for(int j = 0; j < terrain.m_iUSize; ++j)
+
+		// Loop and store each relevant control point into curve.
+		for(unsigned int j = 0; j < terrain.m_iUSize; ++j)
 			vApplicationCurve.push_back(terrain.m_vVertices[j+vIndex]);
 
 		newMrMap.first = false;
 
+		// Add an additional point if Dealing with Odd Vertices. Translate it out by Tile Distance for more uniform division
 		if (isOdd)
 		{	
 			vec3 vTranslateVector = vApplicationCurve.back() - *(vApplicationCurve.end() - 2);
@@ -427,16 +475,20 @@ void Terrain::reduceU(tMesh& terrain)
 			newMrMap.first = true;
 		}
 
+		// Initialize Index
 		i = 0;
 
+		// First 4 Points
 		C1 = vApplicationCurve.at( i ); 
 		C2 = vApplicationCurve.at(i+1);
 		C3 = vApplicationCurve.at(i+2);
 		C4 = vApplicationCurve.at(i+3);
 
+		// Apply Boundary Conditions for Vertices
 		meshV.push_back(C1);
 		meshV.push_back(((-HALF)*C1) + (1*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
 
+		// Apply Boundary Conditions for Details
 		meshD.push_back(((-HALF)*C1) + (1*C2) + ((-THREEQUARTER)*C3) + ((-QUARTER)*C4));
 
 		C1 = vApplicationCurve.at( i+2 ); 
@@ -446,6 +498,7 @@ void Terrain::reduceU(tMesh& terrain)
 		meshD.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((-THREEQUARTER)*C3) + ((QUARTER)*C4));
 
 
+		// Recursively Compute Information For middle curve
 		for (i=2; i < vApplicationCurve.size() - 5; i+=2)
 		{
 			C1 = vApplicationCurve.at( i );
@@ -461,6 +514,7 @@ void Terrain::reduceU(tMesh& terrain)
 			}
 		}
 	
+		// Apply End Boundary Filters
 		C1 = vApplicationCurve.at( i );
 		C2 = vApplicationCurve.at(i+1);
 		C3 = vApplicationCurve.at(i+2);
@@ -471,17 +525,26 @@ void Terrain::reduceU(tMesh& terrain)
 			
 		meshV.push_back(C4);
 
+		// Reset Curve.
 		vApplicationCurve.clear();
 
+		// Store first size for new Usize.
 		if( v == 0 )
 			tmpUSize = meshV.size();
-
 	}
 	newMrMap.second = meshD.size();
 	m_defaultTerrain.m_MrMap.push(newMrMap);
+
+	// Append Details onto Coarse Points
 	meshV.insert( meshV.end(), meshD.begin(), meshD.end());
+
+	// Apply any additional Details from past Reverse Subdivision
 	meshV.insert( meshV.end(), terrain.m_vVertices.begin()+(terrain.m_iUSize*terrain.m_iVSize), terrain.m_vVertices.end());
+
+	// New USize
 	terrain.m_iUSize = tmpUSize;
+
+	// Store Vertices.
 	terrain.m_vVertices = meshV;
 }
 
@@ -490,21 +553,41 @@ void Terrain::get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iInd
 	// Locals/Initialization
 	vec3 vOffset;
 	iIndex1 = iIndex2 = iIndex3 = iIndex4 = -1;
+	int u, v;
 
 	// Check that it's within the terrain
 	// Get step position
-	float fTrueX = (fPosX > m_defaultTerrain.m_vStartPos.x + m_defaultTerrain.m_fWidth) ? m_defaultTerrain.m_vStartPos.x + m_defaultTerrain.m_fWidth - (0.5f * m_defaultTerrain.m_fTileWidth) : fPosX;
-	float fTrueZ = (fPosZ > m_defaultTerrain.m_vStartPos.z + m_defaultTerrain.m_fDepth) ? m_defaultTerrain.m_vStartPos.z + m_defaultTerrain.m_fDepth - (0.5f * m_defaultTerrain.m_fTileDepth) : fPosZ;
-	vOffset = vec3(fTrueX, 0.0, fTrueZ) - vec3(m_defaultTerrain.m_vStartPos.x, 0.0, m_defaultTerrain.m_vStartPos.z);
+	if (!m_bApplicationMode)
+	{
+		u = (fPosX > m_defaultTerrain.m_vEndPos.x) ? m_defaultTerrain.m_iUSize - 2 : -1;
+		v = (fPosZ < m_defaultTerrain.m_vStartPos.z) ? 0 : -1;
+		u = (fPosX < m_defaultTerrain.m_vStartPos.x) ? 0 : u;
+		v = (fPosZ > m_defaultTerrain.m_vEndPos.z) ? m_defaultTerrain.m_iVSize - 2 : v;
+	}
+	else // Limit Boundaries based on Application Mesh Size.
+	{
+		unsigned int uOffset = m_vApplicationMesh.m_iUSize >> 1;
+		unsigned int vOffset = m_vApplicationMesh.m_iVSize >> 1;
+		float fHalfAppWidth = uOffset * m_defaultTerrain.m_fTileWidth;
+		float fHalfAppDepth = vOffset * m_defaultTerrain.m_fTileDepth;
+		u = (fPosX > (m_defaultTerrain.m_vEndPos.x - fHalfAppWidth)) ? (m_defaultTerrain.m_iUSize - 2) - uOffset : -1;
+		v = (fPosZ < m_defaultTerrain.m_vStartPos.z + fHalfAppDepth) ? vOffset : -1;
+		u = (fPosX < m_defaultTerrain.m_vStartPos.x + fHalfAppWidth) ? uOffset : u;
+		v = (fPosZ > m_defaultTerrain.m_vEndPos.z - fHalfAppDepth) ? m_defaultTerrain.m_iVSize - 2 - vOffset : v;
+	}
 
-	int u = (int)(vOffset.x / (float)m_defaultTerrain.m_fTileWidth);
-	int v = (int)(vOffset.z / (float)m_defaultTerrain.m_fTileDepth);
+	vOffset = vec3(fPosX, 0.0, fPosZ) - vec3(m_defaultTerrain.m_vStartPos.x, 0.0, m_defaultTerrain.m_vStartPos.z);
+
+	if( -1 == u )
+		u = (int)(vOffset.x / (float)m_defaultTerrain.m_fTileWidth);
+
+	if( -1 == v )
+		v = (int)(vOffset.z / (float)m_defaultTerrain.m_fTileDepth);
 
 	if (u < 0)
 		u = 0;
 	if (v < 0)
-		v = 0;
-		
+		v = 0;		
 
 	/*
 		iV1 --------- iV2
@@ -535,13 +618,11 @@ void Terrain::get_Point_Pos(float fPosX, float fPosZ)
 		vec2 vVert4 = vec2(m_defaultTerrain.m_vVertices[iIndex4].x, m_defaultTerrain.m_vVertices[iIndex4].z);
 		float fDist = length(vCompVert - vVert1);
 		float fCompDist;
-		//m_vSelector = m_vVertices[iIndex1];
 		m_iSelector = iIndex1;
 		// Vert2 is closer
 		if ((fCompDist = length(vCompVert - vVert2)) < fDist)
 		{
 			fDist = fCompDist;
-			//m_vSelector = m_vVertices[iIndex2];
 			m_iSelector = iIndex2;
 		}
 
@@ -558,111 +639,359 @@ void Terrain::get_Point_Pos(float fPosX, float fPosZ)
 	}
 }
 
+// Locks the Lock Point for Selecting a Subsection of the mesh.
 void Terrain::lockPoint()
 {
-	if (-1 == m_iLockedStart)
+	if (!m_bApplicationMode)
 	{
-		m_iLockedStart = m_iSelector;
-		m_vCurrentSubset.clear();
+		// Nothing locked yet? -> Lock The current selection
+		if (-1 == m_iLockedStart || m_iLockedStart == m_iSelector)
+		{
+			m_iLockedStart = m_iSelector;
+			m_vCurrentSubset.clear();
+		}
+		else
+		{	// Second Lock -> Store the set.
+			bool bHeightActive = m_bHeightMapStored;
+
+			if (m_bHeightMapStored)
+				toggleHeightMap();
+
+			unsigned int iStartU, iStartV, iEndU, iEndV;
+			getSelectedArea(iStartU, iStartV, iEndU, iEndV);
+			m_vCurrentSubset.m_iUSize = iEndU - iStartU + 1;
+			m_vCurrentSubset.m_iVSize = iEndV - iStartV + 1;
+
+			if (m_vCurrentSubset.m_iUSize > 1 && m_vCurrentSubset.m_iVSize > 1)
+			{
+				for (unsigned int v = iStartV; v <= iEndV; ++v)
+				{
+					for (unsigned int u = iStartU; u <= iEndU; ++u)
+					{
+						m_vCurrentSubset.m_vVertices.push_back(m_defaultTerrain.m_vVertices[u + (v*m_defaultTerrain.m_iUSize)]);
+
+					}
+				}
+
+				// Compute Values for Current Subset.
+				initMesh(m_vCurrentSubset);
+			}
+
+			if (bHeightActive)
+				toggleHeightMap();
+
+			// Reset Lock for new selection
+			m_iLockedStart = -1;
+		}
 	}
 	else
-	{
-		unsigned int iStartU, iStartV, iEndU, iEndV;
-		getSelectedArea(iStartU, iStartV, iEndU, iEndV);;
-		for (unsigned int u = iStartU; u <= iEndU; ++u)
-			for (unsigned int v = iStartV; v <= iEndV; ++v)
-				m_vCurrentSubset.push_back(m_defaultTerrain.m_vVertices[u + (v*m_defaultTerrain.m_iUSize)]);
+		blendMesh();
+}
 
-		m_iLockedStart = -1;
+/***********************************************************************\
+ * Terrain Blending Logic                                              *
+\***********************************************************************/
+void Terrain::applyTerrain(const Terrain* pTerrain)
+{
+	if (nullptr != pTerrain)
+	{
+		// Grab one of the stored Meshes in the referenced Terrain
+		if (!pTerrain->m_vSavedSubset.m_vVertices.empty())
+			m_vApplicationMesh = pTerrain->m_vSavedSubset;
+		else if (!pTerrain->m_vCurrentSubset.m_vVertices.empty())
+			m_vApplicationMesh = pTerrain->m_vCurrentSubset;
+
+		// Evaluate Pulled Application Mesh
+		if (m_vApplicationMesh.m_vVertices.empty())
+			cout << "No Mesh to Apply.\n";
+		else if (m_vApplicationMesh.m_fWidth > m_defaultTerrain.m_fWidth || m_vApplicationMesh.m_fDepth > m_defaultTerrain.m_fDepth)
+			cout << "Mesh too Large to blend.\n";
+		else	// Attempt to Subdivide Mesh into blendable area.
+		{
+			// Apply Reverse Subdivision a minimum number of times.
+			for (unsigned int i = 0; i < MIN_BLEND_RS; ++i)
+				reduce(m_vApplicationMesh);
+
+			// Further Reverse Subdivide until able to apply Mesh
+			while (m_vApplicationMesh.m_iUSize > m_defaultTerrain.m_iUSize && m_vApplicationMesh.m_iVSize > m_defaultTerrain.m_iVSize)
+			{
+				reduce(m_vApplicationMesh);
+
+				if (m_vApplicationMesh.m_iUSize < MRLIMIT_MIN || m_vApplicationMesh.m_iVSize < MRLIMIT_MIN)
+					break;
+			}
+
+			// Check to make sure it's possible to subdivide
+			if (m_vApplicationMesh.m_iUSize > m_defaultTerrain.m_iUSize || m_vApplicationMesh.m_iVSize > m_defaultTerrain.m_iVSize)
+			{
+				cout << "Unable to Subdivide Enough to fit Base Mesh.\n";
+				m_vApplicationMesh.clear();
+			}
+			else  // Set Environment for Applying Mesh
+			{
+				// Force Height Map active
+				if (m_bHeightMapStored)
+					toggleHeightMap();
+
+				// Swap to Application Mode.
+				m_bApplicationMode = true;
+
+				m_vCurrentSubset.clear();
+				m_iLockedStart = -1;
+				m_vSavedSubset.clear();
+			}
+				   
+		}
+		
 	}
 }
 
+void Terrain::blendMesh()
+{
+	unsigned int iStartU, iStartV, iEndU, iEndV;
+	getSelectedArea(iStartU, iStartV, iEndU, iEndV);
+	unsigned int iTerrIndex = m_defaultTerrain.m_iUSize * m_defaultTerrain.m_iVSize;
+	unsigned int iAppIndex = m_vApplicationMesh.m_iUSize * m_vApplicationMesh.m_iVSize;
+	unsigned int iAppUIndex = m_vApplicationMesh.m_iUSize;
+	unsigned int iAppVIndex = m_vApplicationMesh.m_iVSize;
+	unsigned int iTerrUIndex = m_defaultTerrain.m_iUSize;
+	unsigned int iTerrVIndex = m_defaultTerrain.m_iVSize;
+	stack<pair<bool, unsigned int>> pMrMapCollector;
+	stack<pair<bool, unsigned int>> pAppMapCollector = m_vApplicationMesh.m_MrMap;
+	pair<bool, unsigned int> pNextMap;
+
+	blendCoarsePoints(iStartU, iStartV, iEndU, iEndV);
+
+	int iCount = 0;
+
+	// Replace existing Details
+	while (!m_defaultTerrain.m_MrMap.empty() && !pAppMapCollector.empty())
+	{
+		iCount += replaceSquaredDetails(iStartU, iStartV, iEndU, iEndV, iTerrIndex, iTerrUIndex, iTerrVIndex, iAppUIndex, iAppVIndex);
+
+		// Something went seriously wrong if the MapStacks aren't even-sized.
+		assert(0 != ((pAppMapCollector.size() + m_defaultTerrain.m_MrMap.size()) % 2));
+		for (int i = 0; i < 2; ++i)
+		{
+			// Pull Mapping for First Subdivision
+			pNextMap = m_defaultTerrain.m_MrMap.top();
+			m_defaultTerrain.m_MrMap.pop();
+
+			// Modify Vertex Addition
+			pNextMap.first ^= pAppMapCollector.top().first;
+			pAppMapCollector.pop();
+
+			// Collect an Ordered Division Map
+			pMrMapCollector.push(pNextMap);
+		}
+	
+	}
+	
+	// Completed all pending Subdivision Details for the main mesh, need to apply any remaining Subdivision Calls for the Target Mesh
+	while (!pAppMapCollector.empty())
+	{
+		m_defaultTerrain.m_vVertices.insert(m_defaultTerrain.m_vVertices.end(), m_defaultTerrain.m_vVertices.size() * 3, vec3(0.0f)); // GOOD!
+		iCount += replaceSquaredDetails(iStartU, iStartV, iEndU, iEndV, iTerrIndex, iTerrUIndex, iTerrVIndex, iAppUIndex, iAppVIndex);
+
+		// Pop Twice for a Squared Subdivision
+		pMrMapCollector.push(pAppMapCollector.top());
+		pAppMapCollector.pop();
+		pMrMapCollector.push(pAppMapCollector.top());
+		pAppMapCollector.pop();
+	}
+
+	//. Populate the Correct MR Map for the Main Terrain.
+	while (!pMrMapCollector.empty())
+	{
+		m_defaultTerrain.m_MrMap.push(pMrMapCollector.top());
+		pMrMapCollector.pop();
+	}
+
+	cout << "Applied Blend, Touched " << iCount << " Vertices.\n";
+	m_bApplicationMode = false;
+}
+
+int Terrain::blendCoarsePoints(unsigned int iStartU, unsigned int iStartV, unsigned int iEndU, unsigned int iEndV)
+{
+	int iCount = 0;
+	// Average y values
+	for (unsigned int u = iStartU; u < iEndU; ++u)
+		for (unsigned int v = iStartV; v < iEndV; ++v)
+		{
+			m_defaultTerrain.m_vVertices[u + (v*m_defaultTerrain.m_iUSize)].y *= m_vApplicationMesh.m_vVertices[(u - iStartU) + ((v - iStartV) * m_vApplicationMesh.m_iUSize)].y;
+			m_defaultTerrain.m_vVertices[u + (v*m_defaultTerrain.m_iUSize)].y *= 0.5f;
+			iCount++;
+		}
+
+	return iCount;
+}
+
+int Terrain::replaceSquaredDetails(unsigned int iStartU, unsigned int iStartV, unsigned int iEndU, unsigned int iEndV, unsigned int& iTerrIndex, 
+	                                unsigned int& iTerrUSize, unsigned int& iTerrVSize, unsigned int& iAppUSize, unsigned int& iAppVSize)
+{
+	int iCount = 0;
+	// Apply 1 Squared Level of Details
+	// U then V (Reverse Order from Reverse Subdivision
+	iTerrUSize += m_defaultTerrain.m_iUSize;
+	iAppUSize += m_vApplicationMesh.m_iUSize;
+	iCount += replaceDetails(iStartU + iTerrIndex, iStartV + iTerrIndex, iEndU + iTerrIndex, iEndV + iTerrIndex, iTerrUSize, iAppUSize);
+	iTerrVSize += m_defaultTerrain.m_iVSize;
+	iAppVSize += m_vApplicationMesh.m_iVSize;
+	iCount += replaceDetails(iStartU + iTerrIndex, iStartV + iTerrIndex, iEndU + iTerrIndex, iEndV + iTerrIndex, iTerrVSize, iAppVSize);
+	iTerrIndex += iTerrIndex;
+
+	return iCount;
+}
+
+int Terrain::replaceDetails(unsigned int iStartU, unsigned int iStartV, unsigned int iEndU, unsigned int iEndV, unsigned int iTerrRowSize, unsigned int iAppRowSize )
+{
+	int iCount = 0;
+	for (unsigned int u = iStartU; u < iEndU; ++u)
+		for (unsigned int v = iStartV; v < iEndV; ++v)
+		{
+			m_defaultTerrain.m_vVertices[u + (v*iTerrRowSize)] = m_vApplicationMesh.m_vVertices[(u - iStartU) + ((v - iStartV) * iAppRowSize)];
+			iCount++;
+		}
+
+	return iCount;
+}
+
+// Saves the Selection into a buffer.
 void Terrain::saveSelection()
 {
-	if (!m_vCurrentSubset.empty())
+	// Make sure we have a Subset to store.
+	if (!m_vCurrentSubset.m_vVertices.empty())
 	{
 		m_vSavedSubset = m_vCurrentSubset;
 		m_vCurrentSubset.clear();
 	}
 }
 
+void Terrain::clearSelection()
+{
+	if (!m_vCurrentSubset.m_vVertices.empty())
+		m_vCurrentSubset.clear();
+	else if (!m_vSavedSubset.m_vVertices.empty())
+		m_vSavedSubset.clear();
+}
+
+// Get A UV Start and End that is in the correct order.
 void Terrain::getSelectedArea(unsigned int &iStartU, unsigned int &iStartV, unsigned int& iEndU, unsigned int& iEndV)
 {
 	unsigned int iTemp;
 
-	iStartV = m_iLockedStart / m_defaultTerrain.m_iUSize;
-	iStartU = m_iLockedStart % m_defaultTerrain.m_iUSize;
 	iEndV = m_iSelector / m_defaultTerrain.m_iUSize;
 	iEndU = m_iSelector % m_defaultTerrain.m_iUSize;
 
-	if (iEndU < iStartU)
+	if (!m_bApplicationMode)
 	{
-		iTemp = iEndU;
-		iEndU = iStartU;
-		iStartU = iTemp;
+		// Compute Us and Vs for start and end positions
+		iStartV = m_iLockedStart / m_defaultTerrain.m_iUSize;
+		iStartU = m_iLockedStart % m_defaultTerrain.m_iUSize;
+
+		// Order them in correct order.
+		if (iEndU < iStartU)
+		{
+			iTemp = iEndU;
+			iEndU = iStartU;
+			iStartU = iTemp;
+		}
+		if (iEndV < iStartV)
+		{
+			iTemp = iEndV;
+			iEndV = iStartV;
+			iStartV = iTemp;
+		}
 	}
-	if (iEndV < iStartV)
+	else
 	{
-		iTemp = iEndV;
-		iEndV = iStartV;
-		iStartV = iTemp;
+		unsigned int iHalfU = m_vApplicationMesh.m_iUSize >> 1;
+		unsigned int iHalfV = m_vApplicationMesh.m_iVSize >> 1;
+
+		
+
+		iStartU = iEndU - iHalfU;
+		iStartV = iEndV - iHalfV;
+		iEndU += iHalfU - (m_vApplicationMesh.m_iUSize % 2);
+		iEndV += iHalfV - (m_vApplicationMesh.m_iVSize % 2);
 	}
 }
 
-// General function to compute Terrain Dimensions
-void Terrain::calculateDimensions()
+void Terrain::initMesh(tMesh& pTerrain)
 {
-	if (!m_defaultTerrain.m_vVertices.empty())
+	calculateDimensions(pTerrain);
+	generateIndices(pTerrain);
+	calculateBarries(pTerrain);
+	generateNormals(pTerrain);
+}
+
+// General function to compute Terrain Dimensions
+void Terrain::calculateDimensions(tMesh& pTerrain)
+{
+	// Ensure that Vertices are loaded.
+	if (!pTerrain.m_vVertices.empty())
 	{
-		m_defaultTerrain.m_vStartPos = m_defaultTerrain.m_vVertices.front();
-		m_defaultTerrain.m_vEndPos = (m_defaultTerrain.m_iUSize == 0 || m_defaultTerrain.m_iVSize == 0) ? m_defaultTerrain.m_vVertices.back() : m_defaultTerrain.m_vVertices[m_defaultTerrain.m_iUSize * m_defaultTerrain.m_iVSize - 1];
+		// Get Start and End Position for Terrain Intersections
+		pTerrain.m_vStartPos = pTerrain.m_vVertices.front();
+		pTerrain.m_vEndPos = (pTerrain.m_iUSize == 0 || pTerrain.m_iVSize == 0) ? pTerrain.m_vVertices.back() : pTerrain.m_vVertices[pTerrain.m_iUSize * pTerrain.m_iVSize - 1];
 
-		m_defaultTerrain.m_fWidth = abs(m_defaultTerrain.m_vEndPos.x - m_defaultTerrain.m_vStartPos.x);
-		m_defaultTerrain.m_fDepth = abs(m_defaultTerrain.m_vEndPos.z - m_defaultTerrain.m_vStartPos.z);
+		// Compute Width and Depth for Terrain Intersections
+		pTerrain.m_fWidth = abs(pTerrain.m_vEndPos.x - pTerrain.m_vStartPos.x);
+		pTerrain.m_fDepth = abs(pTerrain.m_vEndPos.z - pTerrain.m_vStartPos.z);
 
-		m_defaultTerrain.m_fTileWidth = abs(m_defaultTerrain.m_vVertices[1].x - m_defaultTerrain.m_vStartPos.x);
-		
-
-		if (m_defaultTerrain.m_iUSize == 0 || m_defaultTerrain.m_iVSize == 0)
+		// Compute U and V sizes if they haven't been initialized yet.
+		if (pTerrain.m_iUSize == 0 || pTerrain.m_iVSize == 0)
 		{
-			for (vector<vec3>::const_iterator iter = m_defaultTerrain.m_vVertices.begin();
-				iter->z == m_defaultTerrain.m_vStartPos.z;
+			for (vector<vec3>::const_iterator iter = pTerrain.m_vVertices.begin();
+				iter->z == pTerrain.m_vStartPos.z;
 				++iter)
-				m_defaultTerrain.m_iUSize++;
-			for (vector<vec3>::const_iterator iter = m_defaultTerrain.m_vVertices.begin();
-				iter != m_defaultTerrain.m_vVertices.end() && iter->x == m_defaultTerrain.m_vStartPos.x;
-				iter += m_defaultTerrain.m_iUSize)
-				m_defaultTerrain.m_iVSize++;
+				pTerrain.m_iUSize++;
+			for (vector<vec3>::const_iterator iter = pTerrain.m_vVertices.begin();
+				iter != pTerrain.m_vVertices.end() && iter->x == pTerrain.m_vStartPos.x;
+				iter += pTerrain.m_iUSize)
+				pTerrain.m_iVSize++;
 		}
-		m_defaultTerrain.m_fTileDepth = abs(m_defaultTerrain.m_vVertices[m_defaultTerrain.m_iUSize].z - m_defaultTerrain.m_vStartPos.z);
+
+		// Compute TileDimensions
+		pTerrain.m_fTileWidth = abs(pTerrain.m_vVertices[1].x - pTerrain.m_vStartPos.x);
+		pTerrain.m_fTileDepth = abs(pTerrain.m_vVertices[pTerrain.m_iUSize].z - pTerrain.m_vStartPos.z);
 	}
 	else
 		cout << "Unable to compute dimensions; no vertices loaded.\n";
 }
 
-void Terrain::generateIndices( )
+// Computes the Indices for a Mesh when an ordered set of vertices is loaded.
+void Terrain::generateIndices( tMesh& pTerrain )
 {
-	if (!m_defaultTerrain.m_vVertices.empty())
+	if (!pTerrain.m_vVertices.empty())
 	{
-		if (!m_defaultTerrain.m_vIndices.empty())
-			m_defaultTerrain.m_vIndices.clear();
+		if (!pTerrain.m_vIndices.empty())
+			pTerrain.m_vIndices.clear();
 
-		for (unsigned int v = 0; v < m_defaultTerrain.m_iVSize - 1; ++v)
+		/* Compute as:
+			1----2,6
+			|   /|
+			|  / |
+			| /  |
+			|/   | 
+		  3,4----5
+		*/
+		for (unsigned int v = 0; v < pTerrain.m_iVSize - 1; ++v)
 		{
-			for (unsigned int u = 0; u < m_defaultTerrain.m_iUSize - 1; ++u)
+			for (unsigned int u = 0; u < pTerrain.m_iUSize - 1; ++u)
 			{
-				unsigned int iA = u + (v*m_defaultTerrain.m_iUSize);
+				unsigned int iA = u + (v*pTerrain.m_iUSize);
 				unsigned int iB = iA + 1;
-				unsigned int iC = iA + m_defaultTerrain.m_iUSize;
+				unsigned int iC = iA + pTerrain.m_iUSize;
 				unsigned int iD = iC + 1;
 
-				m_defaultTerrain.m_vIndices.push_back(iA);
-				m_defaultTerrain.m_vIndices.push_back(iB);
-				m_defaultTerrain.m_vIndices.push_back(iC);
+				pTerrain.m_vIndices.push_back(iA);
+				pTerrain.m_vIndices.push_back(iB);
+				pTerrain.m_vIndices.push_back(iC);
 
-				m_defaultTerrain.m_vIndices.push_back(iC);
-				m_defaultTerrain.m_vIndices.push_back(iD);
-				m_defaultTerrain.m_vIndices.push_back(iB);
+				pTerrain.m_vIndices.push_back(iC);
+				pTerrain.m_vIndices.push_back(iD);
+				pTerrain.m_vIndices.push_back(iB);
 			}
 		}
 	}
@@ -670,65 +999,65 @@ void Terrain::generateIndices( )
 		cout << "Unable to generate Indices; no vertices loaded.\n";
 }
 
-void Terrain::calculateBarries()
+// Compute Barycentric Coordinates for rendering Wireframe on Terrain.
+void Terrain::calculateBarries(tMesh& pTerrain)
 {
-	if (!m_defaultTerrain.m_vIndices.empty())
+	// Ensure Indices are loaded first.
+	if (!pTerrain.m_vIndices.empty())
 	{
+		if (!pTerrain.m_vBarries.empty())
+			pTerrain.m_vBarries.clear();
+
+		// Local Variables
 		unsigned int iArry[3] = { 0, 1, 2 };
 		unsigned int iX = 0;
+		pTerrain.m_vBarries.reserve(m_defaultTerrain.m_vIndices.size());
 
-		vector<unsigned int> BCverts;
-		BCverts.reserve(m_defaultTerrain.m_vIndices.size());
-
-		for (unsigned int v = 0; v < m_defaultTerrain.m_iVSize; ++v)
+		// Loop through Each Point and apply the Barycentric coordinates
+		for (unsigned int v = 0; v < pTerrain.m_iVSize; ++v)
 		{
-			for (unsigned int u = 0; u < m_defaultTerrain.m_iUSize; u += 3)
+			for (unsigned int u = 0; u < pTerrain.m_iUSize; u += 3)
 			{
-				BCverts.push_back(iArry[iX]);
-				if (u + 1 < m_defaultTerrain.m_iUSize)
-					BCverts.push_back(iArry[(iX + 1) % 3]);
-				if (u + 2 < m_defaultTerrain.m_iUSize)
-					BCverts.push_back(iArry[(iX + 2) % 3]);
+				pTerrain.m_vBarries.push_back(iArry[iX]);
+				if (u + 1 < pTerrain.m_iUSize)
+					pTerrain.m_vBarries.push_back(iArry[(iX + 1) % 3]);
+				if (u + 2 < pTerrain.m_iUSize)
+					pTerrain.m_vBarries.push_back(iArry[(iX + 2) % 3]);
 			}
 			iX = (iX + 2) % 3;
 		}
-
-		glBindVertexArray(m_iVertexArray);
-		glBindBuffer(GL_ARRAY_BUFFER, m_iBaryCentric);
-		glBufferData(GL_ARRAY_BUFFER, BCverts.size() * sizeof(unsigned int), BCverts.data(), GL_STATIC_DRAW);
-		glBindVertexArray(0);
 	}
 }
 
 // Computes and Generates Normals per vertex.
-void Terrain::generateNormals()
+void Terrain::generateNormals(tMesh& pTerrain)
 {
 	// Only attempt to compute if Vertices are loaded.
-	if (!m_defaultTerrain.m_vVertices.empty())
+	if (!pTerrain.m_vVertices.empty())
 	{
 		// Compute Indices if not calculated yet.
-		if (m_defaultTerrain.m_vIndices.empty())
-			generateIndices();
+		if (pTerrain.m_vIndices.empty())
+			generateIndices(pTerrain);
 
 		// Vertices and Indices Loaded, need to compute Normals
-		m_defaultTerrain.m_vNormals.resize(m_defaultTerrain.m_vVertices.size(), vec3(0.0));
-		for (unsigned int i = 0; i < m_defaultTerrain.m_vIndices.size(); i += 3)
+		pTerrain.m_vNormals.resize(pTerrain.m_vVertices.size(), vec3(0.0));
+		for (unsigned int i = 0; i < pTerrain.m_vIndices.size(); i += 3)
 		{
-			assert((i + 2) < m_defaultTerrain.m_vIndices.size());
-			vec3 vTri[3] = { m_defaultTerrain.m_vVertices[m_defaultTerrain.m_vIndices[i]], m_defaultTerrain.m_vVertices[m_defaultTerrain.m_vIndices[i + 1]], m_defaultTerrain.m_vVertices[m_defaultTerrain.m_vIndices[i + 2]] };
+			assert((i + 2) < pTerrain.m_vIndices.size());
+			vec3 vTri[3] = { pTerrain.m_vVertices[pTerrain.m_vIndices[i]], pTerrain.m_vVertices[pTerrain.m_vIndices[i + 1]], pTerrain.m_vVertices[pTerrain.m_vIndices[i + 2]] };
 
 			// Calculate Triangle Normal: (v1 - v0) x (v2 - v0)
 			vec3 vTriNormal = cross((vTri[1] - vTri[0]), (vTri[2] - vTri[0]));
 
 			// Accumulate Normals Per Vertex;
-			m_defaultTerrain.m_vNormals[m_defaultTerrain.m_vIndices[i]] += vTriNormal;
-			m_defaultTerrain.m_vNormals[m_defaultTerrain.m_vIndices[i + 1]] += vTriNormal;
-			m_defaultTerrain.m_vNormals[m_defaultTerrain.m_vIndices[i + 2]] += vTriNormal;
+			pTerrain.m_vNormals[pTerrain.m_vIndices[i]] += vTriNormal;
+			pTerrain.m_vNormals[pTerrain.m_vIndices[i + 1]] += vTriNormal;
+			pTerrain.m_vNormals[pTerrain.m_vIndices[i + 2]] += vTriNormal;
 		}
 
 		// Normalize all Accumulated Normals
-		for (vector< vec3 >::iterator vNormIter = m_defaultTerrain.m_vNormals.begin();
-			vNormIter != m_defaultTerrain.m_vNormals.end();
+		for (vector< vec3 >::iterator vNormIter = pTerrain.m_vNormals.begin();
+			vNormIter != pTerrain.m_vNormals.end();
 			++vNormIter)
 			(*vNormIter) = normalize((*vNormIter));
 	}

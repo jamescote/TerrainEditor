@@ -266,6 +266,16 @@ void GraphicsManager::grow()
 {
 	m_pTerrain[m_iCurrTerrain]->growTerrain();
 }
+
+void GraphicsManager::clearSelection()
+{
+	m_pTerrain[m_iCurrTerrain]->clearSelection();
+}
+
+void GraphicsManager::applyTerrain()
+{
+	m_pTerrain[m_iCurrTerrain]->applyTerrain(m_pTerrain[(m_iCurrTerrain + 1) % 2]);
+}
 /*******************************************************************************\
 * Shader Manipulation                                                          *
 \*******************************************************************************/

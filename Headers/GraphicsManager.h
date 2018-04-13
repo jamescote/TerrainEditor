@@ -84,7 +84,8 @@ public:
 	void saveSelection();
 	void swapTerrains() { m_iCurrTerrain = (m_iCurrTerrain + 1) % 2; }
 	void toggleHeightMap();
-
+	void clearSelection();
+	void applyTerrain();
 	void reduce();
 	void grow();
 	

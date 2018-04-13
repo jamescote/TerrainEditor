@@ -227,7 +227,7 @@ void CmdHandler::handleKeyBoardInput(int cKey, int iAction, int iMods)
 				m_pGPXMngr->swapTerrains();
 				break;
 			case(GLFW_KEY_A):			// Increment Small Radius
-				m_pGPXMngr->modifyHypoSmallR( 0.1f );
+				m_pGPXMngr->applyTerrain();
 				break;
 			case(GLFW_KEY_Z):			// Decrement Small Radius
 				m_pGPXMngr->modifyHypoSmallR( -0.1f );
@@ -237,7 +237,7 @@ void CmdHandler::handleKeyBoardInput(int cKey, int iAction, int iMods)
 				m_pGPXMngr->modifyHypoN( 1 );
 				break;
 			case(GLFW_KEY_C):			// Decrement Num Cycles
-				m_pGPXMngr->modifyHypoN( -1 );
+				m_pGPXMngr->clearSelection();
 				break;
 			case(GLFW_KEY_SPACE):		// Cycle Animation Modes
 				m_pGPXMngr->modifyHypoAnim();
