@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Object3D.h"
+#include <stack>
 
 class Terrain
 {
@@ -16,25 +17,35 @@ public:
 	void toggleHeightMap();
 	void lockPoint();
 	void saveSelection();
-	void grow();	
-	void reduce(vector<vec3>& out_Mesh, unsigned int& uSize, unsigned int& vSize);
+
+	void growTerrain();
 	void reduceTerrain();
+
 private:
 	Terrain( const Terrain* pNewPlane );  // Protected Copy Constructor
 
+	struct tMesh
+	{
+		vector< vec3 > m_vVertices, m_vNormals;
+		vector< unsigned int > m_vIndices;
+		vec3 m_vStartPos, m_vEndPos;
+
+		vector< vec2 > m_vUVs;
+		unsigned int m_iUSize, m_iVSize;
+		
+		vector< float > m_vHeightMap;
+		float m_fWidth, m_fDepth, m_fTileWidth, m_fTileDepth;
+
+		stack<pair<bool, unsigned int>> m_MrMap;
+	};
+
+	tMesh m_defaultTerrain;
 	// Normal of the Terrain.
-	vector< vec3 > m_vVertices, m_vNormals;
 	vector< vec3 > m_vSavedSubset, m_vCurrentSubset;
-	vector< float > m_vHeightMap;
-	vector< vec2 > m_vUVs;
-	vector< unsigned int > m_vIndices;
-	vec3 m_vTempSelectedQuad[4];
-	vec3 m_vStartPos, m_vEndPos;
+
 	vec3 m_vSelector, m_vLockedStart;
 	unsigned int m_iSelector;
 	int m_iLockedStart;
-	float m_fWidth, m_fDepth, m_fTileWidth, m_fTileDepth;
-	unsigned int m_iUSize, m_iVSize;
 	
 	// Calculation functions
 	void calculateDimensions();
@@ -45,6 +56,11 @@ private:
 	GLuint m_iVertexArray, m_iBaryCentric, m_iVertexBuffer, m_iNormalBuffer, m_iTextureBuffer, m_iIndicesBuffer;
 
 	void get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iIndex2, int &iIndex3, int &iIndex4 );
-	void flip(vector<vec3>&, unsigned int&, unsigned int&);
-	void reduceU(vector<vec3>& meshV, unsigned int& uSize, unsigned int& vSize);
+	void flip(tMesh&);
+	void reduce(tMesh&);
+	void reduceU(tMesh&);
+	void grow(tMesh&);	
+	void growU(tMesh&);
+
+
 };

@@ -259,7 +259,7 @@ void CmdHandler::handleKeyBoardInput(int cKey, int iAction, int iMods)
 			case(GLFW_KEY_ENTER):		// Input Handling (TODO)
 				break;
 			case(GLFW_KEY_UP):
-				//TODO: Put here
+				m_pGPXMngr->grow();
 				break;
 			case(GLFW_KEY_DOWN):
 				m_pGPXMngr->reduce();

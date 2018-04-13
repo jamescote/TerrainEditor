@@ -257,14 +257,14 @@ void GraphicsManager::toggleHeightMap()
 	m_pTerrain[m_iCurrTerrain]->toggleHeightMap();
 }
 
-void GraphicsManager::grow()
-{
-	m_pTerrain[m_iCurrTerrain]->grow();
-}
-
 void GraphicsManager::reduce()
 {
 	m_pTerrain[m_iCurrTerrain]->reduceTerrain();
+}
+
+void GraphicsManager::grow()
+{
+	m_pTerrain[m_iCurrTerrain]->growTerrain();
 }
 /*******************************************************************************\
 * Shader Manipulation                                                          *

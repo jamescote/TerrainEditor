@@ -3,6 +3,7 @@
 
 #define PI					3.14159265f
 #define TWOPI				6.283185307f
+#define MRLIMIT_MIN			5
 
 #define HALF 0.5f
 #define QUARTER 0.25f
@@ -17,20 +18,26 @@ Terrain::Terrain(const string& pTerrLoc)
 	vector<int> BCverts;
 	vector<vec2> uvs; 
 
-	m_vEndPos = m_vStartPos = vec3(0.0f);
-	m_fWidth = m_fDepth = -1.0f;
-	m_iUSize = m_iVSize = 0;
-	m_fTileDepth = m_fTileWidth = -1.0f;
+	vector<vec3> mVerts, mNorms;
+
+	m_defaultTerrain.m_vEndPos = m_defaultTerrain.m_vStartPos = vec3(0.0f);
+	m_defaultTerrain.m_fWidth = m_defaultTerrain.m_fDepth = -1.0f;
+	m_defaultTerrain.m_iUSize = m_defaultTerrain.m_iVSize = 0;
+	m_defaultTerrain.m_fTileDepth = m_defaultTerrain.m_fTileWidth = -1.0f;
+
 	m_iLockedStart = -1;
 	m_iSelector = 0;
 
-	objLoader::loadOBJ(pTerrLoc.data(),m_vVertices, uvs, m_vNormals);
+	objLoader::loadOBJ(pTerrLoc.data(),mVerts, uvs, mNorms);
 
+	m_defaultTerrain.m_vVertices = mVerts;
+	m_defaultTerrain.m_vNormals = mNorms;
+	m_defaultTerrain.m_vUVs = uvs;
+	//m_defaultTerrain.m_vNormals;
 
-
-	calculateDimensions();
-	generateIndices();
-	generateNormals();
+	calculateDimensions(); //TODO: Update for tMesh
+	generateIndices(); //TODO: Update for tMesh
+	generateNormals(); //TODO: Update for tMesh
 
 
 	
@@ -39,16 +46,16 @@ Terrain::Terrain(const string& pTerrLoc)
 	unsigned int iArry[3] = {0, 1, 2};
 	unsigned int iX = 0;
 
-	BCverts.reserve( m_vIndices.size());
+	BCverts.reserve( m_defaultTerrain.m_vIndices.size());
 
-	for( unsigned int v = 0; v < m_iVSize; ++v )
+	for( unsigned int v = 0; v < m_defaultTerrain.m_iVSize; ++v )
 	{
-		for( unsigned int u = 0; u < m_iUSize; u += 3)
+		for( unsigned int u = 0; u < m_defaultTerrain.m_iUSize; u += 3)
 		{
 			BCverts.push_back(iArry[iX]);
-			if( u + 1 < m_iUSize )
+			if( u + 1 < m_defaultTerrain.m_iUSize )
 				BCverts.push_back(iArry[(iX + 1) % 3]);
-			if( u + 2 < m_iUSize )
+			if( u + 2 < m_defaultTerrain.m_iUSize )
 				BCverts.push_back(iArry[(iX + 2) % 3]);
 		}
 		iX = (iX + 2) % 3;
@@ -57,24 +64,24 @@ Terrain::Terrain(const string& pTerrLoc)
 	glGenVertexArrays( 1, &m_iVertexArray );
 
 	m_iVertexBuffer = ShaderManager::getInstance()->genVertexBuffer( m_iVertexArray,
-									    							 0, 3, m_vVertices.data(),
-																	 m_vVertices.size() * sizeof( glm::vec3 ), GL_STATIC_DRAW );
+									    							 0, 3, m_defaultTerrain.m_vVertices.data(),
+																	 m_defaultTerrain.m_vVertices.size() * sizeof( glm::vec3 ), GL_STATIC_DRAW );
 
 	m_iBaryCentric = ShaderManager::getInstance()->genVertexBuffer( m_iVertexArray,
 									    							 1, 1, BCverts.data(),
 																	 BCverts.size() * sizeof( int ), GL_STATIC_DRAW );
 
 	m_iNormalBuffer = ShaderManager::getInstance()->genVertexBuffer( m_iVertexArray,
-																	 2, 3, m_vNormals.data(),
-																	 m_vNormals.size() * sizeof( glm::vec3 ), GL_STATIC_DRAW );
+																	 2, 3, m_defaultTerrain.m_vNormals.data(),
+																	 m_defaultTerrain.m_vNormals.size() * sizeof( glm::vec3 ), GL_STATIC_DRAW );
 
 	m_iTextureBuffer = ShaderManager::getInstance()->genVertexBuffer(m_iVertexArray,
-																	 3, 2, m_vUVs.data(),
-																	 m_vUVs.size() * sizeof(vec2), GL_STATIC_DRAW);
+																	 3, 2, m_defaultTerrain.m_vUVs.data(),
+																	 m_defaultTerrain.m_vUVs.size() * sizeof(vec2), GL_STATIC_DRAW);
 
   	m_iIndicesBuffer = ShaderManager::getInstance()->genIndicesBuffer( m_iVertexArray,
-																	 m_vIndices.data(),
-																	 m_vIndices.size() * sizeof( unsigned int ),
+																	 m_defaultTerrain.m_vIndices.data(),
+																	 m_defaultTerrain.m_vIndices.size() * sizeof( unsigned int ),
 																	 GL_STATIC_DRAW );
 
 }
@@ -109,22 +116,21 @@ void Terrain::draw(  )
 	} //*/
 	glBindBuffer(GL_ARRAY_BUFFER, m_iVertexBuffer);
 	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, m_iIndicesBuffer );
-	glBufferData(GL_ARRAY_BUFFER, m_iUSize*m_iVSize * sizeof(vec3), m_vVertices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, m_defaultTerrain.m_iUSize*m_defaultTerrain.m_iVSize * sizeof(vec3), m_defaultTerrain.m_vVertices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_defaultTerrain.m_vIndices.size() * sizeof(unsigned int), m_defaultTerrain.m_vIndices.data(), GL_DYNAMIC_DRAW );
 
 	//* Draw Points
 	ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::WORLD_SHDR, "vColor", &BLACK);
 	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::WORLD_SHDR));
 	glPointSize( 5.0f );  // divide by 4th positon in the projected vector
-	glDrawArrays( GL_POINTS, 0, m_iUSize*m_iVSize );
+	glDrawArrays( GL_POINTS, 0, m_defaultTerrain.m_iUSize*m_defaultTerrain.m_iVSize );
 //*/
 
 
 	// Draw Mesh
 	glUseProgram( ShaderManager::getInstance()->getProgram( ShaderManager::eShaderType::TERRAIN_SHDR ) );
-	glDrawElements( GL_TRIANGLES, m_vIndices.size(), GL_UNSIGNED_INT, 0 );
+	glDrawElements( GL_TRIANGLES, m_defaultTerrain.m_vIndices.size(), GL_UNSIGNED_INT, 0 );
 
-	glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(vec3), &m_vTempSelectedQuad, GL_STATIC_DRAW);
-	
 	ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::WORLD_SHDR, "vColor", &RED);
 	glUseProgram(ShaderManager::getInstance()->getProgram(ShaderManager::eShaderType::WORLD_SHDR));
 	
@@ -135,7 +141,7 @@ void Terrain::draw(  )
 		getSelectedArea(iStartU, iStartV, iEndU, iEndV);;
 		for (unsigned int u = iStartU; u <= iEndU; ++u)
 			for (unsigned int v = iStartV; v <= iEndV; ++v)
-				vTempVerts.push_back(m_vVertices[u + (v*m_iUSize)]);
+				vTempVerts.push_back(m_defaultTerrain.m_vVertices[u + (v*m_defaultTerrain.m_iUSize)]);
 	}
 	else if( !m_vCurrentSubset.empty() )
 	{
@@ -143,12 +149,12 @@ void Terrain::draw(  )
 		glPointSize(7.0f);  // divide by 4th positon in the projected vector
 		glDrawArrays(GL_POINTS, 0, m_vCurrentSubset.size());
 		glPointSize(1.0f);
-		vTempVerts.push_back(m_vVertices[m_iSelector]);
+		vTempVerts.push_back(m_defaultTerrain.m_vVertices[m_iSelector]);
 		ShaderManager::getInstance()->setUniformVec3(ShaderManager::eShaderType::WORLD_SHDR, "vColor", &WHITE);
 	}
 	else
 	{
-		vTempVerts.push_back(m_vVertices[m_iSelector]);
+		vTempVerts.push_back(m_defaultTerrain.m_vVertices[m_iSelector]);
 	}
 	
 	glBufferData(GL_ARRAY_BUFFER, vTempVerts.size() * sizeof(vec3), vTempVerts.data(), GL_STATIC_DRAW);
@@ -199,9 +205,9 @@ void Terrain::get_Triangle_Points(float fPosX, float fPosZ, int &index1, int &in
 				| / |
 				3 - 4
 			*/
-			v4 = normalize(vPosition - m_vVertices[iIndex4]);
-			v2 = normalize(vPosition - m_vVertices[index2]);
-			v3 = normalize(vPosition - m_vVertices[index3]);
+			v4 = normalize(vPosition - m_defaultTerrain.m_vVertices[iIndex4]);
+			v2 = normalize(vPosition - m_defaultTerrain.m_vVertices[index2]);
+			v3 = normalize(vPosition - m_defaultTerrain.m_vVertices[index3]);
 
 			float fTheta1;
 			float fDiagonal = acos(dot(v3, v2));
@@ -216,7 +222,7 @@ void Terrain::get_Triangle_Points(float fPosX, float fPosZ, int &index1, int &in
 				index1 = iIndex4;
 			else
 			{
-				vec3 v1 = normalize(vPosition - m_vVertices[index1]);
+				vec3 v1 = normalize(vPosition - m_defaultTerrain.m_vVertices[index1]);
 
 				// Check Tri v1,v2,v3
 				fTheta1 = acos(dot(v1, v2)) +
@@ -232,20 +238,20 @@ void Terrain::get_Triangle_Points(float fPosX, float fPosZ, int &index1, int &in
 
 void Terrain::toggleHeightMap()
 {
-	if (!m_vVertices.empty())
+	if (!m_defaultTerrain.m_vVertices.empty())
 	{
-		if (m_vHeightMap.empty())
-			m_vHeightMap.resize(m_iUSize * m_iVSize, 0.0f);
+		if (m_defaultTerrain.m_vHeightMap.empty())
+			m_defaultTerrain.m_vHeightMap.resize(m_defaultTerrain.m_iUSize * m_defaultTerrain.m_iVSize, 0.0f);
 
 		float fTemp;
-		for (unsigned int u = 0; u < m_iUSize; ++u)
+		for (unsigned int u = 0; u < m_defaultTerrain.m_iUSize; ++u)
 		{
-			for (unsigned int v = 0; v < m_iVSize; ++v)
+			for (unsigned int v = 0; v < m_defaultTerrain.m_iVSize; ++v)
 			{
-				unsigned int iIndex = u + (v*m_iUSize);
-				fTemp = m_vVertices[iIndex].y;
-				m_vVertices[iIndex].y = m_vHeightMap[iIndex];
-				m_vHeightMap[iIndex] = fTemp;
+				unsigned int iIndex = u + (v*m_defaultTerrain.m_iUSize);
+				fTemp = m_defaultTerrain.m_vVertices[iIndex].y;
+				m_defaultTerrain.m_vVertices[iIndex].y = m_defaultTerrain.m_vHeightMap[iIndex];
+				m_defaultTerrain.m_vHeightMap[iIndex] = fTemp;
 
 			}
 		}
@@ -253,101 +259,160 @@ void Terrain::toggleHeightMap()
 
 }
 
-void Terrain::grow()
+void Terrain::growTerrain()
 {
-	// if (m_vVertices.size == m_iUSize*m_iVSize)
-	// {
-	// 	//add empty details
-	// }
-	// vector< vec3 > newMeshVerts.reserve((2*m_iUSize-1) * (2*m_iVSize-1));
-	// float C1, C2, C3, C4;
-
-	// C1 = m_vVertices.at(0);
-	// C2 = m_vVertices.at(1);
-	// C3 = m_vVertices.at(2);
-	// C4 = m_vVertices.at(3);
-
-	// newMeshVerts.push_back((-1/2) * C1) + (1 * C2) - ((3/4) * C3) + ((1/4) * C4);
-	// newMeshVerts.push_back(((-1/4) * C1) + ((3/4) * C2) - ((3/4) * C3) + ((1/4) * C4));
-
-	// int i = 3;
-
-	// for (; i < m_iUSize- 5; i+=2)
-	// {
-	// 	C1 = m_vVertices.at(i);
-	// 	C2 = m_vVertices.at(i+1);
-	// 	C3 = m_vVertices.at(i+2);
-	// 	C4 = m_vVertices.at(i+3);
-
-	// 	newMeshVerts.push_back(((-3/4)*C1) + ((3/4)*C2) + ((3/4)C3) - ((1/4)C4));
-	// }
-
-	// C1 = m_vVertices.at(i);
-	// C2 = m_vVertices.at(i+1);
-	// C3 = m_vVertices.at(i+2);
-	// C4 = m_vVertices.at(i+3);
-
-
-	// newMeshVerts.push_back(())
-
-	// newMeshVerts.push_back()
-}
-
-void Terrain::reduceTerrain()
-{
-	reduce(m_vVertices, m_iUSize, m_iVSize);
+	grow(m_defaultTerrain);
 	calculateDimensions();
 	generateIndices();
 }
 
-void Terrain::reduce(vector<vec3>& out_Mesh, unsigned int& uSize, unsigned int& vSize)
+void Terrain::grow(tMesh& terrain)
 {
 
-	flip(out_Mesh, uSize, vSize);
-	reduceU(out_Mesh, uSize, vSize);
+		flip(terrain);
+		growU(terrain);
+
+		flip(terrain);
+		growU(terrain);
+}
+
+void Terrain::growU(tMesh& terrain)
+{	
+	vector<vec3> E;
+	vector<vec3> meshV;
+	vector<vec3> meshD;
+
+	vec3 D1,D2,D3;
+	
+
+	float detailOffset = terrain.m_MrMap.empty() ? terrain.m_vVertices.size() : terrain.m_MrMap.top().second;
+	unsigned int remainSize = 0;
+	bool bExtraPoint = terrain.m_MrMap.empty() ? false : terrain.m_MrMap.top().first;
+
+	if( !terrain.m_MrMap.empty() )
+		terrain.m_MrMap.pop();
+
+	// Extrude Details From Mesh
+	if( detailOffset != terrain.m_vVertices.size() )
+	{
+		D1 = terrain.m_vVertices.at(detailOffset  );
+		D2 = terrain.m_vVertices.at(detailOffset+1);
+		D3 = terrain.m_vVertices.at(detailOffset+2);
+
+		// Apply Starting Computation
+		E.push_back(vec3(0));	// E1 = 0 D1
+		E.push_back(HALF * D1);	// E2 = 1/2 D1
+		E.push_back((-THREEQUARTER * D1) + (QUARTER * D2));	// E3 = -3/4 D1 + 1/4 D2
+		E.push_back((-QUARTER * D1) + (THREEQUARTER * D2));	// E4 = -1/4 D1 + 3/4 D2
+		E.push_back((-THREEQUARTER * D2) - (QUARTER * D3));	// E5 = -3/4 D2 - 1/4 D3
+		E.push_back((-QUARTER * D2) + (-THREEQUARTER * D3));	// E6 = -1/4 D2 - 3/4 D3
+
+		unsigned int i;
+		for (i = 3; i < terrain.m_vVertices.size() - detailOffset - 1; i++)
+		{
+			vec3 DI, DII;
+			DI = terrain.m_vVertices.at(detailOffset + i);
+			DII = terrain.m_vVertices.at(detailOffset + i+1);
+			E.push_back((THREEQUARTER * DI) + (-QUARTER * DII));
+			E.push_back((QUARTER * DI) + (-THREEQUARTER * DII));
+		}
+
+		// Final E Calculations
+		vec3 DS = terrain.m_vVertices.at(i);
+
+		E.push_back(HALF * DS);
+		E.push_back(vec3(0));
+		remainSize = i; // details size
+	}
+	else
+		E.resize(detailOffset, vec3(0));
 
 
-	flip(out_Mesh, uSize, vSize);
-	reduceU(out_Mesh, uSize, vSize);
+	meshV.push_back(terrain.m_vVertices.at(0) + E.at(0));
+	meshV.push_back((HALF * terrain.m_vVertices.at(0)) + (HALF * terrain.m_vVertices.at(1)) + (E.at(1)));
+
+	
+	unsigned int i;
+	unsigned int j;
+	vec3 CI,CII;
+	j = 3;
+	for (i = 2; i < terrain.m_vVertices.size(); i++)
+	{	
+		CI = terrain.m_vVertices.at(i);
+		CII = terrain.m_vVertices.at(i+1);
+		meshV.push_back((THREEQUARTER * CI) + (QUARTER * CII) + E.at(j));
+		meshV.push_back((QUARTER * CI) + (THREEQUARTER * CII) + E.at(j+1));
+
+		j+=2;
+	}
+	CI = terrain.m_vVertices.at(i);
+	CII = terrain.m_vVertices.at(i+1);
+	
+	meshV.push_back((HALF * CI) + (HALF * CII) + E.at(j));
+	meshV.push_back(CII + E.at(j+1));
+
+	terrain.m_vVertices = meshV;
 
 
 }
 
-void Terrain::flip(vector<vec3>& out_meshV, unsigned int& uSize, unsigned int& vSize)
+void Terrain::reduceTerrain()
+{
+	reduce(m_defaultTerrain);
+	calculateDimensions();
+	generateIndices();
+}
+
+void Terrain::reduce(tMesh& terrain)
+{
+	if( m_defaultTerrain.m_iUSize != MRLIMIT_MIN && m_defaultTerrain.m_iVSize != MRLIMIT_MIN )
+	{
+		flip(terrain);
+		reduceU(terrain);
+
+
+		flip(terrain);
+		reduceU(terrain);
+	}
+
+
+}
+
+void Terrain::flip(tMesh& terrain)
 {
 	vector<vec3> flippedMesh;
-	for (unsigned int u = 0; u < uSize; u++)
+	for (unsigned int u = 0; u < terrain.m_iUSize; u++)
 	{
-		for (unsigned int v = 0; v < vSize; v++)
+		for (unsigned int v = 0; v < terrain.m_iVSize; v++)
 		{
-			flippedMesh.push_back(out_meshV.at(v*uSize + u));
+			flippedMesh.push_back(terrain.m_vVertices.at(v*terrain.m_iUSize + u));
 		}
 	}
 
-	flippedMesh.insert(flippedMesh.end(), out_meshV.begin()+flippedMesh.size(), out_meshV.end());
-	out_meshV = flippedMesh;
+	flippedMesh.insert(flippedMesh.end(), terrain.m_vVertices.begin()+flippedMesh.size(), terrain.m_vVertices.end());
+	terrain.m_vVertices = flippedMesh;
 
-	uSize = uSize ^ vSize;
-	vSize = vSize ^ uSize;
-	uSize = uSize ^ vSize;
+	terrain.m_iUSize = terrain.m_iUSize ^ terrain.m_iVSize;
+	terrain.m_iVSize = terrain.m_iVSize ^ terrain.m_iUSize;
+	terrain.m_iUSize = terrain.m_iUSize ^ terrain.m_iVSize;
 }
 
-void Terrain::reduceU(vector<vec3>& out_meshV, unsigned int& uSize, unsigned int& vSize)
+void Terrain::reduceU(tMesh& terrain)
 {
 	vec3 C1, C2, C3, C4;
 	vector<vec3> meshV;
 	vector<vec3> meshD;
 	vector< vec3 > vApplicationCurve;
-	bool isOdd = uSize%2;
-	unsigned int tmpUSize = (isOdd)?uSize+1:uSize;
+	bool isOdd = terrain.m_iUSize%2 != 0;
+	unsigned int tmpUSize;
 
 	int i;
 
-	for (unsigned int v = 0; v < vSize; v++)
+	for (unsigned int v = 0; v < terrain.m_iVSize; v++)
 	{
-		unsigned int vIndex = v*uSize;
-		for(int j = 0; j < uSize; ++j)
-			vApplicationCurve.push_back(out_meshV[j+vIndex]);
+		unsigned int vIndex = v*terrain.m_iUSize;
+		for(int j = 0; j < terrain.m_iUSize; ++j)
+			vApplicationCurve.push_back(terrain.m_vVertices[j+vIndex]);
 
 		if( isOdd )
 			vApplicationCurve.push_back(vApplicationCurve.back());
@@ -404,9 +469,9 @@ void Terrain::reduceU(vector<vec3>& out_meshV, unsigned int& uSize, unsigned int
 	}
 
 	meshV.insert( meshV.end(), meshD.begin(), meshD.end());
-	meshV.insert( meshV.end(), out_meshV.begin()+(uSize*vSize), out_meshV.end());
-	uSize = tmpUSize;
-	out_meshV = meshV;
+	meshV.insert( meshV.end(), terrain.m_vVertices.begin()+(terrain.m_iUSize*terrain.m_iVSize), terrain.m_vVertices.end());
+	terrain.m_iUSize = tmpUSize;
+	terrain.m_vVertices = meshV;
 }
 
 void Terrain::get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iIndex2, int &iIndex3, int &iIndex4 )
@@ -417,12 +482,12 @@ void Terrain::get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iInd
 
 	// Check that it's within the terrain
 	// Get step position
-	float fTrueX = (fPosX > m_vStartPos.x + m_fWidth) ? m_vStartPos.x + m_fWidth - (0.5f * m_fTileWidth) : fPosX;
-	float fTrueZ = (fPosZ > m_vStartPos.z + m_fDepth) ? m_vStartPos.z + m_fDepth - (0.5f * m_fTileDepth) : fPosZ;
-	vOffset = vec3(fTrueX, 0.0, fTrueZ) - vec3(m_vStartPos.x, 0.0, m_vStartPos.z);
+	float fTrueX = (fPosX > m_defaultTerrain.m_vStartPos.x + m_defaultTerrain.m_fWidth) ? m_defaultTerrain.m_vStartPos.x + m_defaultTerrain.m_fWidth - (0.5f * m_defaultTerrain.m_fTileWidth) : fPosX;
+	float fTrueZ = (fPosZ > m_defaultTerrain.m_vStartPos.z + m_defaultTerrain.m_fDepth) ? m_defaultTerrain.m_vStartPos.z + m_defaultTerrain.m_fDepth - (0.5f * m_defaultTerrain.m_fTileDepth) : fPosZ;
+	vOffset = vec3(fTrueX, 0.0, fTrueZ) - vec3(m_defaultTerrain.m_vStartPos.x, 0.0, m_defaultTerrain.m_vStartPos.z);
 
-	int u = (int)(vOffset.x / (float)m_fTileWidth);
-	int v = (int)(vOffset.z / (float)m_fTileDepth);
+	int u = (int)(vOffset.x / (float)m_defaultTerrain.m_fTileWidth);
+	int v = (int)(vOffset.z / (float)m_defaultTerrain.m_fTileDepth);
 
 	if (u < 0)
 		u = 0;
@@ -438,9 +503,9 @@ void Terrain::get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iInd
 		iV3 --------- iV4
 	*/
 	// Return Indices
-	iIndex1 = (v * m_iUSize) + u;
+	iIndex1 = (v * m_defaultTerrain.m_iUSize) + u;
 	iIndex2 = iIndex1 + 1;
-	iIndex3 = iIndex1 + m_iUSize;
+	iIndex3 = iIndex1 + m_defaultTerrain.m_iUSize;
 	iIndex4 = iIndex3 + 1;
 
 }
@@ -453,10 +518,10 @@ void Terrain::get_Point_Pos(float fPosX, float fPosZ)
 	if (iIndex1 > -1) // Triangle Found
 	{
 		vec2 vCompVert = vec2(fPosX, fPosZ);
-		vec2 vVert1 = vec2(m_vVertices[iIndex1].x, m_vVertices[iIndex1].z);
-		vec2 vVert2 = vec2(m_vVertices[iIndex2].x, m_vVertices[iIndex2].z);
-		vec2 vVert3 = vec2(m_vVertices[iIndex3].x, m_vVertices[iIndex3].z);
-		vec2 vVert4 = vec2(m_vVertices[iIndex4].x, m_vVertices[iIndex4].z);
+		vec2 vVert1 = vec2(m_defaultTerrain.m_vVertices[iIndex1].x, m_defaultTerrain.m_vVertices[iIndex1].z);
+		vec2 vVert2 = vec2(m_defaultTerrain.m_vVertices[iIndex2].x, m_defaultTerrain.m_vVertices[iIndex2].z);
+		vec2 vVert3 = vec2(m_defaultTerrain.m_vVertices[iIndex3].x, m_defaultTerrain.m_vVertices[iIndex3].z);
+		vec2 vVert4 = vec2(m_defaultTerrain.m_vVertices[iIndex4].x, m_defaultTerrain.m_vVertices[iIndex4].z);
 		float fDist = length(vCompVert - vVert1);
 		float fCompDist;
 		//m_vSelector = m_vVertices[iIndex1];
@@ -495,7 +560,7 @@ void Terrain::lockPoint()
 		getSelectedArea(iStartU, iStartV, iEndU, iEndV);;
 		for (unsigned int u = iStartU; u <= iEndU; ++u)
 			for (unsigned int v = iStartV; v <= iEndV; ++v)
-				m_vCurrentSubset.push_back(m_vVertices[u + (v*m_iUSize)]);
+				m_vCurrentSubset.push_back(m_defaultTerrain.m_vVertices[u + (v*m_defaultTerrain.m_iUSize)]);
 
 		m_iLockedStart = -1;
 	}
@@ -514,10 +579,10 @@ void Terrain::getSelectedArea(unsigned int &iStartU, unsigned int &iStartV, unsi
 {
 	unsigned int iTemp;
 
-	iStartV = m_iLockedStart / m_iUSize;
-	iStartU = m_iLockedStart % m_iUSize;
-	iEndV = m_iSelector / m_iUSize;
-	iEndU = m_iSelector % m_iUSize;
+	iStartV = m_iLockedStart / m_defaultTerrain.m_iUSize;
+	iStartU = m_iLockedStart % m_defaultTerrain.m_iUSize;
+	iEndV = m_iSelector / m_defaultTerrain.m_iUSize;
+	iEndU = m_iSelector % m_defaultTerrain.m_iUSize;
 
 	if (iEndU < iStartU)
 	{
@@ -536,18 +601,18 @@ void Terrain::getSelectedArea(unsigned int &iStartU, unsigned int &iStartV, unsi
 // General function to compute Terrain Dimensions
 void Terrain::calculateDimensions()
 {
-	if (!m_vVertices.empty())
+	if (!m_defaultTerrain.m_vVertices.empty())
 	{
-		m_vStartPos = m_vVertices.front();
-		m_vEndPos = m_vVertices.back();
+		m_defaultTerrain.m_vStartPos = m_defaultTerrain.m_vVertices.front();
+		m_defaultTerrain.m_vEndPos = (m_defaultTerrain.m_iUSize == 0 || m_defaultTerrain.m_iVSize == 0) ? m_defaultTerrain.m_vVertices.back() : m_defaultTerrain.m_vVertices[m_defaultTerrain.m_iUSize * m_defaultTerrain.m_iVSize - 1];
 
-		m_fWidth = abs(m_vEndPos.x - m_vStartPos.x);
-		m_fDepth = abs(m_vEndPos.z - m_vStartPos.z);
+		m_defaultTerrain.m_fWidth = abs(m_defaultTerrain.m_vEndPos.x - m_defaultTerrain.m_vStartPos.x);
+		m_defaultTerrain.m_fDepth = abs(m_defaultTerrain.m_vEndPos.z - m_defaultTerrain.m_vStartPos.z);
 
-		m_fTileWidth = abs(m_vVertices[1].x - m_vStartPos.x);
-		m_iUSize = (unsigned int)round(m_fWidth / m_fTileWidth) + 1;
-		m_fTileDepth = abs(m_vVertices[m_iUSize].z - m_vStartPos.z);
-		m_iVSize = (unsigned int)round(m_fDepth / m_fTileDepth) + 1;
+		m_defaultTerrain.m_fTileWidth = abs(m_defaultTerrain.m_vVertices[1].x - m_defaultTerrain.m_vStartPos.x);
+		m_defaultTerrain.m_iUSize = (unsigned int)round(m_defaultTerrain.m_fWidth / m_defaultTerrain.m_fTileWidth) + 1;
+		m_defaultTerrain.m_fTileDepth = abs(m_defaultTerrain.m_vVertices[m_defaultTerrain.m_iUSize].z - m_defaultTerrain.m_vStartPos.z);
+		m_defaultTerrain.m_iVSize = (unsigned int)round(m_defaultTerrain.m_fDepth / m_defaultTerrain.m_fTileDepth) + 1;
 	}
 	else
 		cout << "Unable to compute dimensions; no vertices loaded.\n";
@@ -555,27 +620,27 @@ void Terrain::calculateDimensions()
 
 void Terrain::generateIndices()
 {
-	if (!m_vVertices.empty())
+	if (!m_defaultTerrain.m_vVertices.empty())
 	{
-		if (!m_vIndices.empty())
-			m_vIndices.clear();
+		if (!m_defaultTerrain.m_vIndices.empty())
+			m_defaultTerrain.m_vIndices.clear();
 
-		for (unsigned int v = 0; v < m_iVSize - 1; ++v)
+		for (unsigned int v = 0; v < m_defaultTerrain.m_iVSize - 1; ++v)
 		{
-			for (unsigned int u = 0; u < m_iUSize - 1; ++u)
+			for (unsigned int u = 0; u < m_defaultTerrain.m_iUSize - 1; ++u)
 			{
-				unsigned int iA = u + (v*m_iUSize);
+				unsigned int iA = u + (v*m_defaultTerrain.m_iUSize);
 				unsigned int iB = iA + 1;
-				unsigned int iC = iA + m_iUSize;
+				unsigned int iC = iA + m_defaultTerrain.m_iUSize;
 				unsigned int iD = iC + 1;
 
-				m_vIndices.push_back(iA);
-				m_vIndices.push_back(iB);
-				m_vIndices.push_back(iC);
+				m_defaultTerrain.m_vIndices.push_back(iA);
+				m_defaultTerrain.m_vIndices.push_back(iB);
+				m_defaultTerrain.m_vIndices.push_back(iC);
 
-				m_vIndices.push_back(iC);
-				m_vIndices.push_back(iD);
-				m_vIndices.push_back(iB);
+				m_defaultTerrain.m_vIndices.push_back(iC);
+				m_defaultTerrain.m_vIndices.push_back(iD);
+				m_defaultTerrain.m_vIndices.push_back(iB);
 			}
 		}
 	}
@@ -587,31 +652,31 @@ void Terrain::generateIndices()
 void Terrain::generateNormals()
 {
 	// Only attempt to compute if Vertices are loaded.
-	if (!m_vVertices.empty())
+	if (!m_defaultTerrain.m_vVertices.empty())
 	{
 		// Compute Indices if not calculated yet.
-		if (m_vIndices.empty())
+		if (m_defaultTerrain.m_vIndices.empty())
 			generateIndices();
 
 		// Vertices and Indices Loaded, need to compute Normals
-		m_vNormals.resize(m_vVertices.size(), vec3(0.0));
-		for (unsigned int i = 0; i < m_vIndices.size(); i += 3)
+		m_defaultTerrain.m_vNormals.resize(m_defaultTerrain.m_vVertices.size(), vec3(0.0));
+		for (unsigned int i = 0; i < m_defaultTerrain.m_vIndices.size(); i += 3)
 		{
-			assert((i + 2) < m_vIndices.size());
-			vec3 vTri[3] = { m_vVertices[m_vIndices[i]], m_vVertices[m_vIndices[i + 1]], m_vVertices[m_vIndices[i + 2]] };
+			assert((i + 2) < m_defaultTerrain.m_vIndices.size());
+			vec3 vTri[3] = { m_defaultTerrain.m_vVertices[m_defaultTerrain.m_vIndices[i]], m_defaultTerrain.m_vVertices[m_defaultTerrain.m_vIndices[i + 1]], m_defaultTerrain.m_vVertices[m_defaultTerrain.m_vIndices[i + 2]] };
 
 			// Calculate Triangle Normal: (v1 - v0) x (v2 - v0)
 			vec3 vTriNormal = cross((vTri[1] - vTri[0]), (vTri[2] - vTri[0]));
 
 			// Accumulate Normals Per Vertex;
-			m_vNormals[m_vIndices[i]] += vTriNormal;
-			m_vNormals[m_vIndices[i + 1]] += vTriNormal;
-			m_vNormals[m_vIndices[i + 2]] += vTriNormal;
+			m_defaultTerrain.m_vNormals[m_defaultTerrain.m_vIndices[i]] += vTriNormal;
+			m_defaultTerrain.m_vNormals[m_defaultTerrain.m_vIndices[i + 1]] += vTriNormal;
+			m_defaultTerrain.m_vNormals[m_defaultTerrain.m_vIndices[i + 2]] += vTriNormal;
 		}
 
 		// Normalize all Accumulated Normals
-		for (vector< vec3 >::iterator vNormIter = m_vNormals.begin();
-			vNormIter != m_vNormals.end();
+		for (vector< vec3 >::iterator vNormIter = m_defaultTerrain.m_vNormals.begin();
+			vNormIter != m_defaultTerrain.m_vNormals.end();
 			++vNormIter)
 			(*vNormIter) = normalize((*vNormIter));
 	}
