@@ -29,6 +29,8 @@ Terrain::Terrain(const string& pTerrLoc)
 	// Initialize Mesh Details
 	initMesh(m_defaultTerrain);
 
+	//reduce(m_defaultTerrain);
+
 	// Generate Open GL Buffers
 	glGenVertexArrays( 1, &m_iVertexArray );
 
@@ -190,57 +192,6 @@ void Terrain::loadMeshData(const tMesh& pTerrain)
 	glBufferData(GL_ARRAY_BUFFER, pTerrain.m_vNormals.size() * sizeof(vec3), pTerrain.m_vNormals.data(), GL_STATIC_DRAW);
 }
 
-void Terrain::get_Triangle_Points(float fPosX, float fPosZ, int &index1, int &index2, int &index3)
-{
-	int iIndex4;
-
-	// Get Indices that position lies within.
-	get_Quad_Points( fPosX, fPosZ, index1, index2, index3, iIndex4 );
-
-	// Position is within Terrain?
-	if( index1 > -1 )
-	{
-			vec3 v2, v3, v4;
-			vec3 vPosition = vec3( fPosX, 0.0f, fPosZ );
-
-			// Compute Barycentric Coordinates
-			/*
-				Quad:
-				1 - 2
-				| / |
-				3 - 4
-			*/
-			v4 = normalize(vPosition - m_defaultTerrain.m_vVertices[iIndex4]);
-			v2 = normalize(vPosition - m_defaultTerrain.m_vVertices[index2]);
-			v3 = normalize(vPosition - m_defaultTerrain.m_vVertices[index3]);
-
-			float fTheta1;
-			float fDiagonal = acos(dot(v3, v2));
-
-			// Check Tri v2,v4,v3
-			fTheta1 = acos(dot(v2, v4))
-					+ acos(dot(v4, v3))
-					+ fDiagonal;
-
-			// Intersected through 2nd? Otherwise, we know it intersected with first.
-			if (fabs(fTheta1 - (TWOPI)) < 0.1)
-				index1 = iIndex4;
-			else
-			{
-				vec3 v1 = normalize(vPosition - m_defaultTerrain.m_vVertices[index1]);
-
-				// Check Tri v1,v2,v3
-				fTheta1 = acos(dot(v1, v2)) +
-						  fDiagonal +
-						  acos(dot(v1, v3));
-
-				if (fabs(fTheta1 - TWOPI) >= 0.1f)
-					index1 = -1;
-			}
-	}
-
-}
-
 // Flattens Terrain to xz-plane. Will restore the y-values if they've already been stored.
 void Terrain::toggleHeightMap()
 {
@@ -393,22 +344,25 @@ void Terrain::reduce(tMesh& terrain)
 {
 	// Get CoarseSize to see if Reverse Subdivision is possible.
 	unsigned int iCoarseUSize = terrain.getCoarseUSize();
+	unsigned int iCoarseVSize = terrain.getCoarseVSize();
 
-	if( iCoarseUSize >= MRLIMIT_MIN && iCoarseUSize >= MRLIMIT_MIN )
+	if( iCoarseUSize >= MRLIMIT_MIN && iCoarseVSize >= MRLIMIT_MIN )
 	{
 		// Apply Reverse Subdivision on Us
 		reduceU(terrain);
 		// Flip terrain, apply Reverse Subdivision on Vs
 		terrain.m_iUSize += (iCoarseUSize & 1);
 		flip(terrain);
-		reduceV(terrain);
+		reduceU(terrain);
 		terrain.m_iUSize += (iCoarseUSize & 1);
 		flip(terrain);
 
 		// Adjust for New Details
 		terrain.m_iStep <<= 1;
 		terrain.m_iExp++;
-		terrain.m_bAddedPointFlags.push_back((iCoarseUSize & 1) != 0);
+		terrain.m_bAddedPointFlagsU.push_back((iCoarseUSize & 1) != 0);
+		terrain.m_bAddedPointFlagsV.push_back((iCoarseVSize & 1) != 0);
+		terrain.m_bEvenSplitU = terrain.m_bEvenSplitV = false;
 
 		initMesh(terrain);
 	}
@@ -438,7 +392,6 @@ void Terrain::flip(tMesh& terrain)
 
 void Terrain::applyUReverseSubdivision(const vector< vec3 >& vApplicationCurve, vector<vec3>::iterator& vMeshInserter, unsigned int iStepSize )
 {
-
 	// Initialize Index
 	unsigned int i = 0;
 
@@ -454,7 +407,7 @@ void Terrain::applyUReverseSubdivision(const vector< vec3 >& vApplicationCurve, 
 	vMeshInserter += iStepSize;
 	// Apply Boundary Conditions for Details
 	//meshD.push_back(((-HALF)*C1) + (1 * C2) + ((-THREEQUARTER)*C3) + ((-QUARTER)*C4));
-	*vMeshInserter = ((-HALF)*F1) + F2 - ((THREEQUARTER)*F3) + ((QUARTER)*F4);			// D1 = 1/2F1 + F2 - 3/4F2 + 1/4F4
+	*vMeshInserter = ((-HALF)*F1) + F2 - ((THREEQUARTER)*F3) + ((QUARTER)*F4);			// D1 = -1/2F1 + F2 - 3/4F2 + 1/4F4
 	vMeshInserter += iStepSize;
 
 	//meshV.push_back(((-HALF)*C1) + (1*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
@@ -523,16 +476,13 @@ void Terrain::reduceU(tMesh& terrain)
 	for (unsigned int v = 0; v < terrain.m_iVSize; v++)
 	{
 		// Loop and store each relevant control point into curve.
-		for (unsigned int j = 0; j < (iCoarseUSize >> terrain.m_iExp); ++j )
+		for (unsigned int j = 0; j < iCoarseUSize - 1; ++j )
 			vApplicationCurve.push_back(terrain.m_vVertices[(j*terrain.m_iStep) + vIndex]);
 
-		// Add the last two points as per the data structure.
-		if (vApplicationCurve.size() != iCoarseUSize)
-		{
-			vApplicationCurve.push_back(terrain.m_vVertices[terrain.m_iUSize - 2 + vIndex]);
-			vApplicationCurve.push_back(terrain.m_vVertices[terrain.m_iUSize - 1 + vIndex]);
-		}
+		// Add the last point as per the data structure.
+		vApplicationCurve.push_back(terrain.m_vVertices[terrain.m_iUSize - 1 + vIndex]);
 
+		// Crash if not all the required points were collected.
 		assert(vApplicationCurve.size() == iCoarseUSize);
 
 		// Add an additional point if Dealing with Odd Vertices. Translate it out by Tile Distance for more uniform division
@@ -558,55 +508,6 @@ void Terrain::reduceU(tMesh& terrain)
 	}
 }  
 
-void Terrain::reduceV(tMesh& terrain)
-{
-	// Local Variables
-	vec3 C1, C2, C3, C4;
-	vector< vec3 > vApplicationCurve;
-	vector< vec3 >::iterator vMeshInserter = terrain.m_vVertices.begin();
-	unsigned int iCoarseUSize = terrain.getCoarseUSize();
-	bool isOdd = (iCoarseUSize & 1) != 0;
-	unsigned int vIndex = 0;
-
-	// Loop for Each U-Curve on Mesh
-	for (unsigned int v = 0; v < terrain.m_iUSize; v += (terrain.m_iStep << 1))
-	{
-		// Loop and store each relevant control point into curve.
-		for (unsigned int j = 0; j < (iCoarseUSize >> terrain.m_iExp); ++j)
-			vApplicationCurve.push_back(terrain.m_vVertices[(j*terrain.m_iStep) + vIndex]);
-
-		// Add the last two points as per the data structure.
-		if (vApplicationCurve.size() != iCoarseUSize)
-		{
-			vApplicationCurve.push_back(terrain.m_vVertices[terrain.m_iUSize - 2 + vIndex]);
-			vApplicationCurve.push_back(terrain.m_vVertices[terrain.m_iUSize - 1 + vIndex]);
-		}
-
-		assert(vApplicationCurve.size() == iCoarseUSize);
-
-		// Add an additional point if Dealing with Odd Vertices. Translate it out by Tile Distance for more uniform division
-		if (isOdd)
-		{
-			vec3 vTranslateVector = vApplicationCurve.back() - *(vApplicationCurve.end() - 2);
-			vApplicationCurve.push_back(vApplicationCurve.back() + vec3(vTranslateVector.x, 0.0f, vTranslateVector.z));
-		}
-
-		applyUReverseSubdivision(vApplicationCurve, vMeshInserter, terrain.m_iStep);
-
-		if (isOdd) // Add the new Vertex in Odd Case
-			terrain.m_vVertices.insert(vMeshInserter, C4);
-		else
-			++vMeshInserter;
-
-		vMeshInserter += terrain.m_iUSize;
-		// Reset Curve.
-		vApplicationCurve.clear();
-
-		// Index into Row of Mesh
-		vIndex += 2 * terrain.m_iUSize;
-	}
-}
-
 // Given a World x and z position, returns the 4 indices of the Quad the position is situated in
 // These indices are in Coarse Space.
 void Terrain::get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iIndex2, int &iIndex3, int &iIndex4 )
@@ -616,13 +517,14 @@ void Terrain::get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iInd
 	iIndex1 = iIndex2 = iIndex3 = iIndex4 = -1;
 	int u, v;
 	unsigned int iCoarseUSize = m_defaultTerrain.getCoarseUSize(); // Get USize wrt Coarse Space
+	unsigned int iCoarseVSize = m_defaultTerrain.getCoarseVSize(); // Get VSize wrt Coarse Space
 
 	// Check that it's within the terrain
 	// Get step position
 	u = (fPosX > m_defaultTerrain.m_vEndPos.x) ? iCoarseUSize - 2 : -1;
 	v = (fPosZ < m_defaultTerrain.m_vStartPos.z) ? 0 : -1;
 	u = (fPosX < m_defaultTerrain.m_vStartPos.x) ? 0 : u;
-	v = (fPosZ > m_defaultTerrain.m_vEndPos.z) ? iCoarseUSize/*Assume Square-sized Geometry*/ - 2 : v;
+	v = (fPosZ > m_defaultTerrain.m_vEndPos.z) ? iCoarseVSize - 2 : v;
 	vOffset = vec3(fPosX, 0.0, fPosZ) - vec3(m_defaultTerrain.m_vStartPos.x, 0.0, m_defaultTerrain.m_vStartPos.z);
 
 	// Calculate Within Area of Terrain
@@ -636,10 +538,10 @@ void Terrain::get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iInd
 		u = 0;
 	if (v < 0)
 		v = 0;
-	if (u >= iCoarseUSize - 1)
-		u = iCoarseUSize - 2;
-	if (v >= iCoarseUSize - 1)
-		v = iCoarseUSize - 2;
+	//if (u >= iCoarseUSize - 1)
+	//	u = iCoarseUSize - 2;
+	//if (v >= iCoarseUSize - 1)
+	//	v = iCoarseUSize - 2;
 
 	/*
 		iV1 --------- iV2
@@ -733,6 +635,8 @@ void Terrain::lockPoint()
 				m_vCurrentSubset.m_iVSize = iEndV - iStartV + 1;
 				m_vCurrentSubset.m_iExp = m_defaultTerrain.m_iExp;
 				m_vCurrentSubset.m_iStep = m_defaultTerrain.m_iStep;
+				m_vCurrentSubset.m_bEvenSplitU = (iEndU < m_defaultTerrain.m_iUSize - 2);
+				m_vCurrentSubset.m_bEvenSplitV = (iEndV < m_defaultTerrain.m_iVSize - 2);
 
 				for (unsigned int v = iStartV; v <= iEndV; ++v)
 				{
@@ -742,6 +646,7 @@ void Terrain::lockPoint()
 						m_vCurrentSubset.m_vVertices.push_back(m_defaultTerrain.m_vVertices[iIndex]);
 						m_vCurrentSubset.m_vNormals.push_back(m_defaultTerrain.m_vNormals[iIndex]);
 					}
+					cout << endl;
 				}
 
 				// Compute Values for Current Subset.
@@ -956,15 +861,15 @@ bool Terrain::getSelectedArea(unsigned int &iStartU, unsigned int &iStartV, unsi
 	int iWorkingSU, iWorkingSV, iWorkingEU, iWorkingEV; // Working Points
 	bool bReturnValue = true;
 
-	// Calculate End U and V in Coarse-Point Space
-	iWorkingEV = m_iSelector / iCoarseUSize;
-	iWorkingEU = m_iSelector % iCoarseUSize;
-
 	if (!m_bApplicationMode)
 	{
 		// Calculate Start U and V in Coarse-Point Space
 		iWorkingSV = m_iLockedStart / iCoarseUSize;
 		iWorkingSU = m_iLockedStart % iCoarseUSize;
+
+		// Calculate End U and V in Coarse-Point Space
+		iWorkingEV = m_iSelector / iCoarseUSize;
+		iWorkingEU = m_iSelector % iCoarseUSize;
 
 		// Square off the selection
 		bReturnValue = squareArea(iWorkingSU, iWorkingSV, iWorkingEU, iWorkingEV);
@@ -986,39 +891,18 @@ bool Terrain::getSelectedArea(unsigned int &iStartU, unsigned int &iStartV, unsi
 	else // Computing Application Mesh Size
 	{
 		unsigned int iHalfU = m_vApplicationMesh.getCoarseUSize() >> 1;
-		unsigned int iHalfV = iHalfU * iCoarseUSize;
+		unsigned int iHalfV = m_vApplicationMesh.getCoarseVSize() >> 1;
 
-		if (iCoarseUSize & 1) // Odd Number of Control Points
-		{
-			iWorkingSU = iEndU - iHalfU;	// iStartU
-			iWorkingSV = iWorkingSU - iHalfV;	// iStartV
-			iWorkingEU = iEndU + iHalfU;	// iEndU
-			iWorkingEV = iWorkingEU + iHalfV;	// iEndV
-		}
-		else // Even Number of Control Points
-		{
-			vec2 vPoint = Mouse_Handler::getInstance(nullptr)->getPosition();
-			vec3 vIntersection = GraphicsManager::getInstance(nullptr)->getIntersection(vPoint.x, vPoint.y);
-			get_Quad_Points(vIntersection.x, vIntersection.z, iWorkingSU, iWorkingSV, iWorkingEU, iWorkingEV);
-
-			// Break if No valid Quad Found, should be capped to Terrain Limits
-			assert(iWorkingSU > -1);
-
-			/*
-	  iStartU,iStartV-------------*
-			  |					  |
-			  |	   1 ------- 2	  |
-			  |	   |         |    |
-			  |    |         |    |
-			  |    3 ------- 4    |
-			  |					  |
-			  *-------------------iEndU,iEndV
-			*/
-			iWorkingSU = iWorkingSU - iHalfU;		// iStartU
-			iWorkingSV = iWorkingSU - iHalfV;		// iStartV
-			iWorkingEU = iWorkingEV + iHalfU;		// iEndU
-			iWorkingEV = iWorkingEU + iHalfV;		// iEndV
-		}
+		vec2 vPoint = Mouse_Handler::getInstance(nullptr)->getPosition();
+		vec3 vIntersection = GraphicsManager::getInstance(nullptr)->getIntersection(vPoint.x, vPoint.y);
+		get_Quad_Points(vIntersection.x, vIntersection.z, iWorkingSU, iWorkingSV, iWorkingEU, iWorkingEV);
+		bool bOddU = (m_vApplicationMesh.getCoarseUSize() & 1);
+		bool bOddV = (m_vApplicationMesh.getCoarseVSize() & 1);
+		
+		iWorkingSU = (bOddU) ? iWorkingSU - iHalfU : iWorkingSU - iHalfU + 1;
+		iWorkingSV = (bOddV) ? iWorkingSV - iHalfV : iWorkingSV - iHalfV + 1;
+		iWorkingEU = (bOddU) ? iWorkingSU + iHalfU : iWorkingEU + iHalfU - 1;
+		iWorkingEV = (bOddV) ? iWorkingSV + iHalfV : iWorkingEV + iHalfV - 1;
 	}
 	
 	// Bound the Expanded area to within Default Terrain Boundaries.
@@ -1043,14 +927,14 @@ bool Terrain::getSelectedArea(unsigned int &iStartU, unsigned int &iStartV, unsi
 // Returns a New Area within iCoarseUSize and starting parameters that is squared to the nearest power of 2 >= 16
 bool Terrain::squareArea(int& iStartU, int& iStartV, int& iEndU, int& iEndV)
 {
-	unsigned int iCoarseUSize = m_defaultTerrain.getCoarseUSize();
 	int iWidth = iEndU - iStartU;
 	int iDepth = iEndV - iStartV;
 	int iSquareCounter = MIN_SELECTION_SIZE;
 	int iWidthDirection = (0 < iWidth) - (iWidth < 0);
 	int iDepthDirection = (0 < iDepth) - (iDepth < 0);
 
-	if (MIN_SELECTION_SIZE > iCoarseUSize)
+	if (MIN_SELECTION_SIZE > m_defaultTerrain.getCoarseUSize() ||
+		MIN_SELECTION_SIZE > m_defaultTerrain.getCoarseVSize() )
 		return false;
 
 	// Half the Difference to get an average, use max(that, Minimum size);
@@ -1090,6 +974,7 @@ bool Terrain::boundArea(int& iStartU, int& iStartV, int& iEndU, int& iEndV)
 	*/
 	int iAdjustor;
 	unsigned int iCoarseUSize = m_defaultTerrain.getCoarseUSize();
+	unsigned int iCoarseVSize = m_defaultTerrain.getCoarseVSize();
 
 	// Adjust Bounds
 	if (iStartU < 0)	// Shift Right
@@ -1106,14 +991,14 @@ bool Terrain::boundArea(int& iStartU, int& iStartV, int& iEndU, int& iEndV)
 	}
 	if (iEndU >= (int)iCoarseUSize)	// Shift Left
 	{
-		iAdjustor = iEndU - iCoarseUSize;
-		iEndU -= iAdjustor + 1;
+		iAdjustor = iEndU - iCoarseUSize + 1; 
+		iEndU -= iAdjustor;
 		iStartU -= iAdjustor;
 	}
-	if (iEndV >= (int)iCoarseUSize) // Shift Up
+	if (iEndV >= (int)iCoarseVSize) // Shift Up
 	{
-		iAdjustor = iEndV - iCoarseUSize; 
-		iEndV -= iAdjustor + 1;
+		iAdjustor = iEndV - iCoarseVSize + 1; 
+		iEndV -= iAdjustor;
 		iStartV -= iAdjustor;
 	}
 
@@ -1171,9 +1056,8 @@ void Terrain::calculateDimensions(tMesh& pTerrain)
 		}
 		else
 		{
-			
-			pTerrain.m_fTileWidth = pTerrain.m_vVertices[pTerrain.m_iStep].x - pTerrain.m_vStartPos.x;
-			pTerrain.m_fTileDepth = pTerrain.m_vVertices[pTerrain.m_iStep * pTerrain.m_iUSize].z - pTerrain.m_vStartPos.z;
+			pTerrain.m_fTileWidth = pTerrain.m_fWidth / (pTerrain.getCoarseUSize() - 1);
+			pTerrain.m_fTileDepth = pTerrain.m_fDepth / (pTerrain.getCoarseVSize() - 1);
 		}
 	}
 	else
@@ -1198,7 +1082,8 @@ void Terrain::generateIndices( tMesh& pTerrain )
 		*/
 		// Compute in Coarse Space, store in Index Space.
 		unsigned int iCoarseUSize = pTerrain.getCoarseUSize();
-		for (unsigned int v = 0; v < iCoarseUSize - 1; ++v)
+		unsigned int iCoarseVSize = pTerrain.getCoarseVSize();
+		for (unsigned int v = 0; v < iCoarseVSize - 1; ++v)
 		{
 			for (unsigned int u = 0; u < iCoarseUSize - 1; ++u)
 			{
@@ -1208,7 +1093,6 @@ void Terrain::generateIndices( tMesh& pTerrain )
 				unsigned int iB = pTerrain.coarseToIndexSpace(iA + 1);
 				iA = pTerrain.coarseToIndexSpace(iA);
 				iC = pTerrain.coarseToIndexSpace(iC);
-				
 
 				pTerrain.m_vIndices.push_back(iA);
 				pTerrain.m_vIndices.push_back(iB);
@@ -1238,10 +1122,10 @@ void Terrain::calculateBarries(tMesh& pTerrain)
 		unsigned int iX = 0;
 		pTerrain.m_vBarries.reserve(pTerrain.m_vIndices.size());
 		unsigned int iCoarseUSize = pTerrain.getCoarseUSize();
+		unsigned int iCoarseVSize = pTerrain.getCoarseVSize();
 
-		assert(pTerrain.m_iUSize == pTerrain.m_iVSize); // Ensure that We're dealing with Square Terrains
 		// Loop through Each Point and apply the Barycentric coordinates (in Coarse Space)
-		for (unsigned int v = 0; v < iCoarseUSize; ++v)
+		for (unsigned int v = 0; v < iCoarseVSize; ++v)
 		{
 			for (unsigned int u = 0; u < iCoarseUSize; u += 3)
 			{

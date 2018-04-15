@@ -38,7 +38,9 @@ private:
 		float m_fWidth, m_fDepth, m_fTileWidth, m_fTileDepth;	
 		unsigned int m_iStep;
 		unsigned int m_iExp;
-		vector< bool > m_bAddedPointFlags;
+		bool m_bEvenSplitU, m_bEvenSplitV;
+		vector< bool > m_bAddedPointFlagsU;
+		vector< bool > m_bAddedPointFlagsV;
 
 		tMesh()
 		{
@@ -58,6 +60,7 @@ private:
 			m_fTileDepth = m_fTileWidth = -1.0f;
 			m_iStep = 1;
 			m_iExp = 0;
+			m_bEvenSplitU = m_bEvenSplitV = false;
 		}
 
 		unsigned int getCoarseUSize()
@@ -66,8 +69,18 @@ private:
 			// Adjust for Reverse Subdivision. Total size is divided by the number of steps between points.
 			//								   There is the possibility of an additional point added (odd-> add 1)
 			//								   If there was some reverse subdivision, there's an additional point added at the end.
-			return (m_iUSize / m_iStep) + didAddPoint() + (m_iExp > 0 ? 1 : 0);
+			return (m_iUSize / m_iStep) + didAddPointU() + (m_iExp > 0 ? 1 : 0);
 		}
+
+		unsigned int getCoarseVSize()
+		{
+
+			// Adjust for Reverse Subdivision. Total size is divided by the number of steps between points.
+			//								   There is the possibility of an additional point added (odd-> add 1)
+			//								   If there was some reverse subdivision, there's an additional point added at the end.
+			return (m_iVSize / m_iStep) + didAddPointV() + (m_iExp > 0 ? 1 : 0);
+		}
+
 
 		// Converts a given pair of Coarse U and V coordinates into Index space within the Vertex array.
 		void coarseToIndexSpace(unsigned int& iCoarseU, unsigned int& iCoarseV)
@@ -76,16 +89,18 @@ private:
 			if (m_iExp)
 			{
 				// Else, get the Coarse Size and set into an array for processing
-				unsigned int iCoarseUSize = getCoarseUSize();
+				unsigned int iCoarseArry[] = { getCoarseUSize(), getCoarseVSize() };
 				unsigned int* iArry[] = { &iCoarseU, &iCoarseV };
+				bool bArry[] = {m_bEvenSplitU, m_bEvenSplitV};
+				unsigned int iSizeArry[] = { m_iUSize, m_iVSize };
 
 				// for each one, apply the same algorithm
 				for (int i = 0; i < 2; ++i)
 				{
-					if (*iArry[i] == iCoarseUSize - 1) // The Last Point is always the same Size - 1
-						*iArry[i] = m_iUSize - 1;
-					else if (didAddPoint() && (*iArry[i] == iCoarseUSize - 2)) 
-						*iArry[i] = m_iUSize - 2; // If the Full size is odd, there's an added point. This fullfills the same condition as the first condition for this case.
+					if (*iArry[i] == iCoarseArry[i] - 1) // The Last Point is always the same Size - 1
+						*iArry[i] = iSizeArry[i] - 1;
+					else if (!bArry[i] && (*iArry[i] == iCoarseArry[i] - 2) )
+						*iArry[i] = iSizeArry[i] - 2; // If the Full size is odd, there's an added point. This fullfills the same condition as the first condition for this case.
 					else // Otherwise, The resulting index is a multiple of the stepsize.
 						*iArry[i] *= m_iStep;
 
@@ -120,11 +135,20 @@ private:
 
 		}
 
-	private: bool didAddPoint()
+		bool didAddPointU()
 		{
 			bool bAddedPoint = false;
-			for (vector< bool >::const_iterator iter = m_bAddedPointFlags.begin();
-				iter != m_bAddedPointFlags.end();
+			for (vector< bool >::const_iterator iter = m_bAddedPointFlagsU.begin();
+				iter != m_bAddedPointFlagsU.end();
+				++iter)
+				bAddedPoint ^= (*iter);
+			return bAddedPoint;
+		}
+		bool didAddPointV()
+		{
+			bool bAddedPoint = false;
+			for (vector< bool >::const_iterator iter = m_bAddedPointFlagsV.begin();
+				iter != m_bAddedPointFlagsV.end();
 				++iter)
 				bAddedPoint ^= (*iter);
 			return bAddedPoint;
@@ -164,11 +188,9 @@ private:
 	GLuint m_iVertexArray, m_iBaryCentric, m_iVertexBuffer, m_iNormalBuffer, m_iTextureBuffer, m_iIndicesBuffer;
 
 	void get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iIndex2, int &iIndex3, int &iIndex4 );
-	void get_Triangle_Points(float fPosX, float fPosZ, int &index1, int &index2, int &index3);
 	void flip(tMesh&);
 	void reduce(tMesh&);
 	void reduceU(tMesh&);
-	void reduceV(tMesh&);
 	void applyUReverseSubdivision(const vector< vec3 >& vApplicationCurve, vector<vec3>::iterator& vMeshInserter, unsigned int iStepSize);
 	void grow(tMesh&);	
 	void growU(tMesh&);
