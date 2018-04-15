@@ -35,10 +35,10 @@ private:
 
 		// Dimensions of Mesh
 		unsigned int m_iUSize, m_iVSize;
-		float m_fWidth, m_fDepth, m_fTileWidth, m_fTileDepth;
-
-		// Stack for Reverse Subdivision
-		stack<pair<bool, unsigned int>> m_MrMap;
+		float m_fWidth, m_fDepth, m_fTileWidth, m_fTileDepth;	
+		unsigned int m_iStep;
+		unsigned int m_iExp;
+		vector< bool > m_bAddedPointFlags;
 
 		tMesh()
 		{
@@ -56,6 +56,55 @@ private:
 			m_fWidth = m_fDepth = -1.0f;
 			m_iUSize = m_iVSize = 0;
 			m_fTileDepth = m_fTileWidth = -1.0f;
+			m_iStep = 1;
+			m_iExp = 0;
+		}
+
+		unsigned int getCoarseUSize()
+		{
+
+			// Adjust for Reverse Subdivision. Total size is divided by the number of steps between points.
+			//								   There is the possibility of an additional point added (odd-> add 1)
+			//								   If there was some reverse subdivision, there's an additional point added at the end.
+			return (m_iUSize / m_iStep) + didAddPoint() + (m_iExp > 0 ? 1 : 0);
+		}
+
+		// Converts a given pair of Coarse U and V coordinates into Index space within the Vertex array.
+		void coarseToIndexSpace(unsigned int& iCoarseU, unsigned int& iCoarseV)
+		{
+			// If No Reverse Subdivision has taken place, this function is onto and one to one
+			if (m_iExp)
+			{
+				// Else, get the Coarse Size and set into an array for processing
+				unsigned int iCoarseUSize = getCoarseUSize();
+				unsigned int* iArry[] = { &iCoarseU, &iCoarseV };
+
+				// for each one, apply the same algorithm
+				for (int i = 0; i < 2; ++i)
+				{
+					if (*iArry[i] == iCoarseUSize - 1) // The Last Point is always the same Size - 1
+						*iArry[i] = m_iUSize - 1;
+					else if (didAddPoint() && (*iArry[i] == iCoarseUSize - 2)) 
+						*iArry[i] = m_iUSize - 2; // If the Full size is odd, there's an added point. This fullfills the same condition as the first condition for this case.
+					else // Otherwise, The resulting index is a multiple of the stepsize.
+						*iArry[i] *= m_iStep;
+
+				}
+			}
+		}
+
+		// Overloaded Function, converts an index from Coarse Space to Index Space
+		unsigned int coarseToIndexSpace(unsigned int iCoarseIndex) 
+		{
+			if (!m_iExp)
+				return iCoarseIndex; // Nothing to compute if every point is a control point.
+
+			unsigned int iCoarseUSize = getCoarseUSize();
+			unsigned int iU = iCoarseIndex % iCoarseUSize;
+			unsigned int iV = iCoarseIndex / iCoarseUSize;
+			coarseToIndexSpace(iU, iV); // Convert U and V to Index Space
+			// compute the new Index
+			return iU + (iV * m_iUSize);
 		}
 
 		void outputMesh()
@@ -69,6 +118,16 @@ private:
 			cout << "\tUSize: " << m_iUSize << "; VSize: " << m_iVSize << endl;
 			cout << "\tTile Width: " << m_fTileWidth << "; Tile Depth: " << m_fTileDepth << endl;
 
+		}
+
+	private: bool didAddPoint()
+		{
+			bool bAddedPoint = false;
+			for (vector< bool >::const_iterator iter = m_bAddedPointFlags.begin();
+				iter != m_bAddedPointFlags.end();
+				++iter)
+				bAddedPoint ^= (*iter);
+			return bAddedPoint;
 		}
 	};
 
@@ -91,9 +150,10 @@ private:
 	void initMesh(tMesh& pTerrain);
 	void calculateDimensions( tMesh& pTerrain );
 	void generateIndices( tMesh& pTerrain );
-	void generateNormals(tMesh& pTerrain);
 	void calculateBarries(tMesh& pTerrain);
-	void getSelectedArea(unsigned int &iStartU, unsigned int &iStartV, unsigned int& iEndU, unsigned int& iEndV);
+	bool getSelectedArea(unsigned int &iStartU, unsigned int &iStartV, unsigned int& iEndU, unsigned int& iEndV, bool bIndexSpace = true);
+	bool squareArea(int& iStartU, int& iStartV, int& iEndU, int& iEndV);
+	bool boundArea(int& iStartU, int& iStartV, int& iEndU, int& iEndV);
 	void loadMeshData(const tMesh& pTerrain);
 	void blendMesh();
 	int blendCoarsePoints(unsigned int iStartU, unsigned int iStartV, unsigned int iEndU, unsigned int iEndV);
@@ -108,6 +168,8 @@ private:
 	void flip(tMesh&);
 	void reduce(tMesh&);
 	void reduceU(tMesh&);
+	void reduceV(tMesh&);
+	void applyUReverseSubdivision(const vector< vec3 >& vApplicationCurve, vector<vec3>::iterator& vMeshInserter, unsigned int iStepSize);
 	void grow(tMesh&);	
 	void growU(tMesh&);
 

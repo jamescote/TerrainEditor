@@ -88,6 +88,7 @@ public:
 	void applyTerrain();
 	void reduce();
 	void grow();
+	vec3 getIntersection(float fX, float fY);
 	
 private:
 	// For Singleton Implementation
@@ -104,7 +105,6 @@ private:
 
 	// Camera
 	Camera* m_pCamera;
-	vec3 getIntersection( float fX, float fY );
 
 	// Render Functions
 	void RenderScene();

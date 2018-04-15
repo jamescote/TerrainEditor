@@ -26,6 +26,7 @@ public:
 	void mouseREnd() { m_bRotateFlag = false; }
 
 	void mouseZoom(float fZoomVal);
+	vec2 getPosition() { return m_pInitialPos; }
 
 private:
 	// Singleton Implementation
