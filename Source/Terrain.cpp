@@ -4,7 +4,7 @@
 
 #define PI					3.14159265f
 #define TWOPI				6.283185307f
-#define MRLIMIT_MIN			5
+#define MRLIMIT_MIN			8
 #define MIN_BLEND_RS		3
 #define MIN_SELECTION_SIZE	16
 
@@ -361,13 +361,27 @@ void Terrain::reduce(tMesh& terrain)
 
 	if( iCoarseUSize >= MRLIMIT_MIN && iCoarseVSize >= MRLIMIT_MIN )
 	{
+		if (iCoarseUSize & 1)
+		{
+			flip(terrain);
+			terrain.m_vVertices.insert(terrain.m_vVertices.end(), terrain.m_iUSize, vec3(0.0));
+			terrain.m_vNormals.insert(terrain.m_vNormals.end(), terrain.m_iUSize, vec3(0.0, 1.0, 0.0));
+			terrain.m_iVSize++; // Flip Swaps this to Usize
+			flip(terrain);
+			
+		}
 		// Apply Reverse Subdivision on Us
 		reduceU(terrain);
+
+		if (iCoarseVSize & 1)
+		{
+			terrain.m_vVertices.insert(terrain.m_vVertices.end(), terrain.m_iUSize, vec3(0.0));
+			terrain.m_vNormals.insert(terrain.m_vNormals.end(), terrain.m_iUSize, vec3(0.0, 1.0, 0.0));
+			terrain.m_iVSize++;
+		}
 		// Flip terrain, apply Reverse Subdivision on Vs
-		terrain.m_iUSize += (iCoarseUSize & 1);
 		flip(terrain);
 		reduceU(terrain);
-		terrain.m_iUSize += (iCoarseUSize & 1);
 		flip(terrain);
 
 		// Adjust for New Details
@@ -385,17 +399,20 @@ void Terrain::reduce(tMesh& terrain)
 void Terrain::flip(tMesh& terrain)
 {
 	//Flip Vertices
-	vector<vec3> flippedMesh;
+	vector<vec3> flippedMesh, flippedNormals;
 	for (unsigned int u = 0; u < terrain.m_iUSize; u++)
 	{
 		for (unsigned int v = 0; v < terrain.m_iVSize; v++)
 		{
-			flippedMesh.push_back(terrain.m_vVertices.at(v*terrain.m_iUSize + u));
+			unsigned int iIndex = v*terrain.m_iUSize + u;
+			flippedMesh.push_back(terrain.m_vVertices.at(iIndex));
+			flippedNormals.push_back(terrain.m_vNormals.at(iIndex));
 		}
 	}
 
 	// Append on Details Information
 	terrain.m_vVertices = flippedMesh;
+	terrain.m_vNormals = flippedNormals;
 
 	// Swap U and V sizes
 	terrain.m_iUSize = terrain.m_iUSize ^ terrain.m_iVSize;
@@ -403,115 +420,111 @@ void Terrain::flip(tMesh& terrain)
 	terrain.m_iUSize = terrain.m_iUSize ^ terrain.m_iVSize;
 }
 
-void Terrain::applyUReverseSubdivision(const vector< vec3 >& vApplicationCurve, vector<vec3>::iterator& vMeshInserter, unsigned int iStepSize )
-{
-	// Initialize Index
-	unsigned int i = 0;
-
-	// First 4 Points
-	vec3 F1 = vApplicationCurve.at(i);
-	vec3 F2 = vApplicationCurve.at(i + 1);
-	vec3 F3 = vApplicationCurve.at(i + 2);
-	vec3 F4 = vApplicationCurve.at(i + 3);
-
-	// Apply Boundary Conditions for Vertices
-	//meshV.push_back(C1);
-	//*vMeshInserter = C1;																		// C1 = F1
-	vMeshInserter += iStepSize;
-	// Apply Boundary Conditions for Details
-	//meshD.push_back(((-HALF)*C1) + (1 * C2) + ((-THREEQUARTER)*C3) + ((-QUARTER)*C4));
-	*vMeshInserter = ((-HALF)*F1) + F2 - ((THREEQUARTER)*F3) + ((QUARTER)*F4);			// D1 = -1/2F1 + F2 - 3/4F2 + 1/4F4
-	vMeshInserter += iStepSize;
-
-	//meshV.push_back(((-HALF)*C1) + (1*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
-	*vMeshInserter = ((-HALF)*F1) + F2 + ((THREEQUARTER)*F3) - ((QUARTER)*F4);			// C2 = -1/2F1 + F2 + 3/4F3 - 1/4F4
-	vMeshInserter += iStepSize;
-
-	F1 = vApplicationCurve.at(i + 2);
-	F2 = vApplicationCurve.at(i + 3);
-	F3 = vApplicationCurve.at(i + 4);
-	F4 = vApplicationCurve.at(i + 5);
-	//meshD.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((-THREEQUARTER)*C3) + ((QUARTER)*C4));
-	*vMeshInserter = ((-QUARTER)*F1) + ((THREEQUARTER)*F2) - ((THREEQUARTER)*F3) + ((QUARTER)*F4); // D2 = -1/4F3 + 3/4F4 - 3/4F5 + 1/4F6
-	vMeshInserter += iStepSize;
-
-	// Recursively Compute Information For middle curve
-	for (i = 2; i < vApplicationCurve.size() - 5; i += 2)
-	{
-		F1 = vApplicationCurve.at(i);
-		F2 = vApplicationCurve.at(i + 1);
-		F3 = vApplicationCurve.at(i + 2);
-		F4 = vApplicationCurve.at(i + 3);
-
-		// Details
-		if (i >= 4)
-		{
-			//meshD.push_back(((QUARTER)*C1) - ((THREEQUARTER)*C2) + ((THREEQUARTER)*C3) - ((QUARTER)*C4));
-			*vMeshInserter = ((QUARTER)*F1) - ((THREEQUARTER)*F2) + ((THREEQUARTER)*F3) - ((QUARTER)*F4); // Dj = 1/4Fi - 3/4Fi+1 + 3/4Fi+2 - 1/4Fi+3
-			vMeshInserter += iStepSize;
-		}
-
-		// Coarse Point
-		//meshV.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
-		*vMeshInserter = ((-QUARTER)*F1) + ((THREEQUARTER)*F2) + ((THREEQUARTER)*F3) - ((QUARTER)*F4); // Cj = -1/4Fi + 3/4Fi+1 + 3/4Fi+2 - 1/4Fi+3
-		vMeshInserter += iStepSize;
-	}
-
-	// m-3 zero based
-	i = vApplicationCurve.size() - 4;
-	// Apply End Boundary Filters
-	F1 = vApplicationCurve.at(i);
-	F2 = vApplicationCurve.at(i + 1);
-	F3 = vApplicationCurve.at(i + 2);
-	F4 = vApplicationCurve.at(i + 3);
-
-	//meshD.push_back(((QUARTER)*C1) - ((THREEQUARTER)*C2) + ((1)*C3) - ((HALF)*C4));
-	*vMeshInserter = ((QUARTER)*F1) - ((THREEQUARTER)*F2) + F3 - ((HALF)*F4); // Dj = 1/4Fm-3 - 3/4Fm-2 + Fm-1 - 1/2Fm
-	++vMeshInserter;
-
-	//meshV.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((1)*C3) + ((-HALF)*C4));
-	*vMeshInserter = ((-QUARTER)*F1) + ((THREEQUARTER)*F2) + F3 - ((HALF)*F4); // Cj = -1/4Fm-3 + 3/4Fm-2 + Fm-1 -1/2Fm
-	++vMeshInserter;
-}
-
 // Apply Reverse Subdivision on terrain (in the U-direction)
 void Terrain::reduceU(tMesh& terrain)
 {
 	// Local Variables
-	vec3 F1, F2, F3, F4;
 	vector< vec3 > vApplicationCurve;
 	vector< vec3 >::iterator vMeshInserter = terrain.m_vVertices.begin();
 	unsigned int iCoarseUSize = terrain.getCoarseUSize();
 	bool isOdd = (iCoarseUSize & 1) != 0;
+	//iCoarseUSize += isOdd;
 	unsigned int vIndex = 0;
+	unsigned int iStepSize = terrain.m_iStep;
 
 	// Loop for Each U-Curve on Mesh
 	for (unsigned int v = 0; v < terrain.m_iVSize; v++)
 	{
 		// Loop and store each relevant control point into curve.
-		for (unsigned int j = 0; j < iCoarseUSize - 1; ++j )
-			vApplicationCurve.push_back(terrain.m_vVertices[(j*terrain.m_iStep) + vIndex]);
+		for (unsigned int j = 0; j < terrain.m_iUSize - 2; j+=terrain.m_iStep )
+			vApplicationCurve.push_back(terrain.m_vVertices[j + vIndex]);
 
 		// Add the last point as per the data structure.
+		vApplicationCurve.push_back(terrain.m_vVertices[terrain.m_iUSize - 2 + vIndex]);
 		vApplicationCurve.push_back(terrain.m_vVertices[terrain.m_iUSize - 1 + vIndex]);
 
 		// Crash if not all the required points were collected.
-		assert(vApplicationCurve.size() == iCoarseUSize);
+		//assert(vApplicationCurve.size() == iCoarseUSize);
 
 		// Add an additional point if Dealing with Odd Vertices. Translate it out by Tile Distance for more uniform division
 		if (isOdd)
 		{	
-			vec3 vTranslateVector = vApplicationCurve.back() - *(vApplicationCurve.end() - 2);
-			vApplicationCurve.push_back(vApplicationCurve.back() + vec3(vTranslateVector.x, 0.0f, vTranslateVector.z));
+			vec3 vPushOut = *(vApplicationCurve.end() - 2);
+			vec3 vTranslateVector = vPushOut - *(vApplicationCurve.end() - 3);
+			vApplicationCurve.back() = vPushOut + vec3(vTranslateVector.x, 0.0f, vTranslateVector.z);
+			//terrain.m_vVertices.insert(terrain.m_vVertices.begin() + (v+1) * terrain.m_iUSize, vApplicationCurve.back());
 		}
 
-		// Apply Algorithm on U-Curve
-		applyUReverseSubdivision(vApplicationCurve, vMeshInserter, terrain.m_iStep);
+		// First 4 Points
+		vec3 F1 = vApplicationCurve.at(0);
+		vec3 F2 = vApplicationCurve.at(1);
+		vec3 F3 = vApplicationCurve.at(2);
+		vec3 F4 = vApplicationCurve.at(3);
 
-		if (isOdd) // Add the new Vertex in Odd Case
-			terrain.m_vVertices.insert(vMeshInserter, F4);
-		else
-			++vMeshInserter;
+		// Apply Boundary Conditions for Vertices
+		//meshV.push_back(C1);
+		//*vMeshInserter = C1;																		// C1 = F1
+		vMeshInserter += iStepSize;
+		// Apply Boundary Conditions for Details
+		//meshD.push_back(((-HALF)*C1) + (1 * C2) + ((-THREEQUARTER)*C3) + ((-QUARTER)*C4));
+		*vMeshInserter = ((-HALF)*F1) + F2 - ((THREEQUARTER)*F3) + ((QUARTER)*F4);			// D1 = -1/2F1 + F2 - 3/4F2 + 1/4F4
+		vMeshInserter += iStepSize;
+
+		//meshV.push_back(((-HALF)*C1) + (1*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
+		*vMeshInserter = ((-HALF)*F1) + F2 + ((THREEQUARTER)*F3) - ((QUARTER)*F4);			// C2 = -1/2F1 + F2 + 3/4F3 - 1/4F4
+		vMeshInserter += iStepSize;
+
+		F1 = vApplicationCurve.at(2);
+		F2 = vApplicationCurve.at(3);
+		F3 = vApplicationCurve.at(4);
+		F4 = vApplicationCurve.at(5);
+		//meshD.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((-THREEQUARTER)*C3) + ((QUARTER)*C4));
+		*vMeshInserter = ((-QUARTER)*F1) + ((THREEQUARTER)*F2) - ((THREEQUARTER)*F3) + ((QUARTER)*F4); // D2 = -1/4F3 + 3/4F4 - 3/4F5 + 1/4F6
+		vMeshInserter += iStepSize;
+
+		// Recursively Compute Information For middle curve
+		unsigned int i = 2;
+		for (i; i < vApplicationCurve.size() - 4; i += 2)
+		{
+			F1 = vApplicationCurve.at(i);
+			F2 = vApplicationCurve.at(i + 1);
+			F3 = vApplicationCurve.at(i + 2);
+			F4 = vApplicationCurve.at(i + 3);
+
+			// Details
+			if (i >= 4)
+			{
+				//meshD.push_back(((QUARTER)*C1) - ((THREEQUARTER)*C2) + ((THREEQUARTER)*C3) - ((QUARTER)*C4));
+				*vMeshInserter = ((QUARTER)*F1) - ((THREEQUARTER)*F2) + ((THREEQUARTER)*F3) - ((QUARTER)*F4); // Dj = 1/4Fi - 3/4Fi+1 + 3/4Fi+2 - 1/4Fi+3
+				vMeshInserter += iStepSize;
+			}
+
+			// Coarse Point
+			//meshV.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
+			*vMeshInserter = ((-QUARTER)*F1) + ((THREEQUARTER)*F2) + ((THREEQUARTER)*F3) - ((QUARTER)*F4); // Cj = -1/4Fi + 3/4Fi+1 + 3/4Fi+2 - 1/4Fi+3
+			vMeshInserter += iStepSize;
+		}
+
+		// m-3 zero based
+		i = vApplicationCurve.size() - 4;
+		// Apply End Boundary Filters
+		F1 = vApplicationCurve.at(i);
+		F2 = vApplicationCurve.at(i + 1);
+		F3 = vApplicationCurve.at(i + 2);
+		F4 = vApplicationCurve.at(i + 3);
+
+		vMeshInserter = terrain.m_vVertices.begin() + terrain.m_iUSize + vIndex - 3;
+		//meshD.push_back(((QUARTER)*C1) - ((THREEQUARTER)*C2) + ((1)*C3) - ((HALF)*C4));
+		*vMeshInserter = ((QUARTER)*F1) - ((THREEQUARTER)*F2) + F3 - ((HALF)*F4); // Dj = 1/4Fm-3 - 3/4Fm-2 + Fm-1 - 1/2Fm
+		++vMeshInserter;
+
+		//meshV.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((1)*C3) + ((-HALF)*C4));
+		*vMeshInserter = ((-QUARTER)*F1) + ((THREEQUARTER)*F2) + F3 - ((HALF)*F4); // Cj = -1/4Fm-3 + 3/4Fm-2 + Fm-1 -1/2Fm
+		++vMeshInserter;
+		*vMeshInserter = F4;
+		++vMeshInserter; // Cj+1 == Fm
+		// Apply Algorithm on U-Curve
+		//applyUReverseSubdivision(vApplicationCurve, vMeshInserter, terrain.m_iStep);
 
 		// Reset Curve.
 		vApplicationCurve.clear();
@@ -648,8 +661,8 @@ void Terrain::lockPoint()
 				m_vCurrentSubset.m_iVSize = iEndV - iStartV + 1;
 				m_vCurrentSubset.m_iExp = m_defaultTerrain.m_iExp;
 				m_vCurrentSubset.m_iStep = m_defaultTerrain.m_iStep;
-				m_vCurrentSubset.m_bEvenSplitU = (iEndU < m_defaultTerrain.m_iUSize - 2);
-				m_vCurrentSubset.m_bEvenSplitV = (iEndV < m_defaultTerrain.m_iVSize - 2);
+				m_vCurrentSubset.m_bEvenSplitU = (iEndU < m_defaultTerrain.m_iUSize - 1);
+				m_vCurrentSubset.m_bEvenSplitV = (iEndV < m_defaultTerrain.m_iVSize - 1);
 
 				for (unsigned int v = iStartV; v <= iEndV; ++v)
 				{

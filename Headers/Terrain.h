@@ -191,7 +191,6 @@ private:
 	void flip(tMesh&);
 	void reduce(tMesh&);
 	void reduceU(tMesh&);
-	void applyUReverseSubdivision(const vector< vec3 >& vApplicationCurve, vector<vec3>::iterator& vMeshInserter, unsigned int iStepSize);
 	void grow(tMesh&);	
 	void growU(tMesh&);
 
