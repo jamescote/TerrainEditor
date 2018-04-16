@@ -240,82 +240,95 @@ void Terrain::grow(tMesh& terrain)
 
 void Terrain::growU(tMesh& terrain)
 {	
-	/*
-	vector<vec3> E;
-	vector<vec3> meshV;
-	vector<vec3> meshD;
-
 	vec3 D1,D2,D3;
 	
-	unsigned int detailOffset = terrain.m_MrMap.empty() ? 0 : terrain.m_MrMap.top().second;
-	unsigned int remainSize = 0;
-	bool bExtraPoint = terrain.m_MrMap.empty() ? false : terrain.m_MrMap.top().first;
+	unsigned int detailOffset = terrain.m_iStep;
+	unsigned int coarseUSize = terrain.getCoarseUSize();
+	unsigned int coarseVSize = terrain.getCoarseVSize();
 
-	if( !terrain.m_MrMap.empty() )
-		terrain.m_MrMap.pop();
+	if ()
+
+
 
 	// Extrude Details From Mesh
-	if( detailOffset != 0 )
-	{
-		D1 = terrain.m_vVertices.at(detailOffset  );
-		D2 = terrain.m_vVertices.at(detailOffset+1);
-		D3 = terrain.m_vVertices.at(detailOffset+2);
+	 if( detailOffset != 1 )
+	 {
+	// 	D1 = terrain.m_vVertices.at(detailOffset  );
+	// 	D2 = terrain.m_vVertices.at(detailOffset+1);
+	// 	D3 = terrain.m_vVertices.at(detailOffset+2);
 
-		// Apply Starting Computation
-		E.push_back(vec3(0));	// E1 = 0 D1
-		E.push_back(HALF * D1);	// E2 = 1/2 D1
-		E.push_back((-THREEQUARTER * D1) + (QUARTER * D2));	// E3 = -3/4 D1 + 1/4 D2
-		E.push_back((-QUARTER * D1) + (THREEQUARTER * D2));	// E4 = -1/4 D1 + 3/4 D2
-		E.push_back((-THREEQUARTER * D2) - (QUARTER * D3));	// E5 = -3/4 D2 - 1/4 D3
-		E.push_back((-QUARTER * D2) + (-THREEQUARTER * D3));	// E6 = -1/4 D2 - 3/4 D3
+	// 	// Apply Starting Computation
+	// 	E.push_back(vec3(0));	// E1 = 0 D1
+	// 	E.push_back(HALF * D1);	// E2 = 1/2 D1
+	// 	E.push_back((-THREEQUARTER * D1) + (QUARTER * D2));		// E3 = -3/4 D1 + 1/4 D2
+	// 	E.push_back((-QUARTER * D1) + (THREEQUARTER * D2));		// E4 = -1/4 D1 + 3/4 D2
+	// 	E.push_back((-THREEQUARTER * D2) - (QUARTER * D3));		// E5 = -3/4 D2 - 1/4 D3
+	// 	E.push_back((-QUARTER * D2) + (-THREEQUARTER * D3));	// E6 = -1/4 D2 - 3/4 D3
 
-		unsigned int i;
-		for (i = 3; i < terrain.m_vVertices.size() - detailOffset - 1; i++)
-		{
-			vec3 DI, DII;
-			DI = terrain.m_vVertices.at(detailOffset + i);
-			DII = terrain.m_vVertices.at(detailOffset + i+1);
-			E.push_back((THREEQUARTER * DI) + (-QUARTER * DII));
-			E.push_back((QUARTER * DI) + (-THREEQUARTER * DII));
-		}
+	// 	unsigned int i;
+	// 	for (i = 3; i < terrain.m_vVertices.size() - detailOffset - 1; i++)
+	// 	{
+	// 		vec3 DI, DII;
+	// 		DI = terrain.m_vVertices.at(detailOffset + i);
+	// 		DII = terrain.m_vVertices.at(detailOffset + i+1);
+	// 		E.push_back((THREEQUARTER * DI) + (-QUARTER * DII));
+	// 		E.push_back((QUARTER * DI) + (-THREEQUARTER * DII));
+	// 	}
 
-		// Final E Calculations
-		vec3 DS = terrain.m_vVertices.at(i);
+	// 	// Final E Calculations
+	// 	vec3 DS = terrain.m_vVertices.at(i);
 
-		E.push_back(HALF * DS);
-		E.push_back(vec3(0));
-		remainSize = i; // details size
+	// 	E.push_back(HALF * DS);
+	// 	E.push_back(vec3(0));
+	// 	remainSize = i; // details size
 	}
 	else
-		E.resize(detailOffset, vec3(0));
+	{
+		terrain.m_vVertices.reserve(terrain.m_vVertices.size()*2);
 
+		vector<vec3>::iterator it = terrain.m_vVertices.begin()+1;
+		terrain.m_iUSize = (terrain.m_iUSize*2)-2;
 
-	meshV.push_back(terrain.m_vVertices.at(0) + E.at(0));
-	meshV.push_back((HALF * terrain.m_vVertices.at(0)) + (HALF * terrain.m_vVertices.at(1)) + (E.at(1)));
+		unsigned int rowCounter = 0;
+		unsigned int rowLimit = terrain.m_iUSize-2;
+		cout << rowLimit << endl;
 
-	
-	unsigned int i;
-	unsigned int j;
-	vec3 CI,CII;
-	j = 3;
-	for (i = 2; i < terrain.m_vVertices.size(); i++)
-	{	
-		CI = terrain.m_vVertices.at(i);
-		CII = terrain.m_vVertices.at(i+1);
-		meshV.push_back((THREEQUARTER * CI) + (QUARTER * CII) + E.at(j));
-		meshV.push_back((QUARTER * CI) + (THREEQUARTER * CII) + E.at(j+1));
+		for (; it < terrain.m_vVertices.end(); it+=2)
+		{
 
-		j+=2;
+			it = terrain.m_vVertices.insert(it, vec3(0));
+			rowCounter+=2;
+
+			if (rowCounter == rowLimit) 
+			{
+				rowCounter = 0;
+				it+=2;
+			}
+		}
 	}
-	CI = terrain.m_vVertices.at(i);
-	CII = terrain.m_vVertices.at(i+1);
+
+
 	
-	meshV.push_back((HALF * CI) + (HALF * CII) + E.at(j));
-	meshV.push_back(CII + E.at(j+1));
+	// unsigned int i;
+	// unsigned int j;
+	// vec3 CI,CII;
+	// j = 3;
+	// for (i = 2; i < terrain.m_vVertices.size(); i++)
+	// {	
+	// 	CI = terrain.m_vVertices.at(i);
+	// 	CII = terrain.m_vVertices.at(i+1);
+	// 	meshV.push_back((THREEQUARTER * CI) + (QUARTER * CII) + E.at(j));
+	// 	meshV.push_back((QUARTER * CI) + (THREEQUARTER * CII) + E.at(j+1));
 
-	terrain.m_vVertices = meshV;
-//*/
+	// 	j+=2;
+	// }
+	// CI = terrain.m_vVertices.at(i);
+	// CII = terrain.m_vVertices.at(i+1);
+	
+	// meshV.push_back((HALF * CI) + (HALF * CII) + E.at(j));
+	// meshV.push_back(CII + E.at(j+1));
 
+	// terrain.m_vVertices = meshV;
 }
 
 /********************************************************************\
@@ -646,7 +659,6 @@ void Terrain::lockPoint()
 						m_vCurrentSubset.m_vVertices.push_back(m_defaultTerrain.m_vVertices[iIndex]);
 						m_vCurrentSubset.m_vNormals.push_back(m_defaultTerrain.m_vNormals[iIndex]);
 					}
-					cout << endl;
 				}
 
 				// Compute Values for Current Subset.
