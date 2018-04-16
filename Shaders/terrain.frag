@@ -60,7 +60,7 @@ void main(void)
 		//color = vec4( vObjColor.rgb, 1.0 );
 		// Specular
 		color = vec4(clamp(diffuse + vObjColor.xyz*specular, 0.0, 1.0), 1.0);
-		//color = vec4(N,1.0);//vObjColor;
+		color = vObjColor;
 	}
 
 }

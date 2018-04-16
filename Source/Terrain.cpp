@@ -221,11 +221,70 @@ void Terrain::toggleHeightMap()
 
 }
 
+// Adds zeroed details for further subdivisions, only works for un-reverse subdivided meshes.
+void Terrain::addDetails(tMesh& pTerrain, unsigned int iLevelOfDetail)
+{
+	if (!pTerrain.m_iExp)
+	{
+		pTerrain.m_iStep = (1 << iLevelOfDetail);
+		pTerrain.m_iExp = iLevelOfDetail;
+
+		for (unsigned int i = 0; i < 2; ++i)
+		{
+			flip(pTerrain);
+			// Local Variables
+			vector<vec3>::iterator vMeshIterator = pTerrain.m_vVertices.begin() + 1;
+			unsigned int iCounter = 0;
+			const unsigned int iNumNewDetailsPerRow = pTerrain.m_iUSize - 2;
+			unsigned int iNumDetails = ((pTerrain.m_iUSize - 2) << 1) - 1;
+			pTerrain.m_iUSize += pTerrain.m_iUSize - 2;
+			pTerrain.m_bAddedPointFlagsU.push_back(false);
+			unsigned int iInsertCount = pTerrain.m_iStep - 1;
+			unsigned int iLastInsertCount = (iInsertCount >> 1) + 1;
+
+			// compute the additional verts that need to be removed at each step in the subdivision.
+			for (unsigned int i = 1; i < iLevelOfDetail; ++i)
+			{
+				bool bAddedPoint = (iNumDetails != (pTerrain.m_iUSize - 2));
+				if (bAddedPoint) // Odd, a Vertex would need to be added at this stage.
+					pTerrain.m_iUSize--;
+
+				pTerrain.m_iUSize += iNumDetails;
+				iNumDetails <<= 1;
+				pTerrain.m_bAddedPointFlagsU.push_back(bAddedPoint);
+			}
+			pTerrain.m_iUSize++; // Usize is Num of points in a row, add one since base zero.
+
+			// Add the additional Points
+			for (vMeshIterator; vMeshIterator != pTerrain.m_vVertices.end() - 2; vMeshIterator += pTerrain.m_iStep)
+			{
+				if ((++iCounter) != iNumNewDetailsPerRow)
+					vMeshIterator = pTerrain.m_vVertices.insert(vMeshIterator, iInsertCount, vec3(0.0));
+				else
+				{
+					vMeshIterator = pTerrain.m_vVertices.insert(vMeshIterator, iLastInsertCount, vec3(0.0));
+					vMeshIterator -= ((int)pTerrain.m_iStep - (int)iLastInsertCount - 3);
+					iCounter = 0;
+				}
+			}
+			pTerrain.m_vVertices.insert(pTerrain.m_vVertices.end() - 2, iLastInsertCount, vec3(0.0)); // Insert Last Element @ end - 2
+
+			// Setup Terrain to reflect the new details
+			pTerrain.m_bEvenSplitU = false;
+		}
+
+		initMesh(pTerrain);
+	}
+	else
+		"Unsure how to add details to a mesh that already has details.";
+}
+
 void Terrain::growTerrain()
 {
-	grow(m_defaultTerrain);
-	calculateDimensions( m_defaultTerrain);
-	generateIndices(m_defaultTerrain);
+	addDetails(m_defaultTerrain, 2);
+	//grow(m_defaultTerrain);
+	//calculateDimensions( m_defaultTerrain);
+	//generateIndices(m_defaultTerrain);
 }
 
 void Terrain::grow(tMesh& terrain)
@@ -386,20 +445,28 @@ void Terrain::reduce(tMesh& terrain)
 void Terrain::flip(tMesh& terrain)
 {
 	//Flip Vertices
-	vector<vec3> flippedMesh, flippedNormals;
+	vector<vec3> flippedMesh;
 	for (unsigned int u = 0; u < terrain.m_iUSize; u++)
 	{
 		for (unsigned int v = 0; v < terrain.m_iVSize; v++)
 		{
 			unsigned int iIndex = v*terrain.m_iUSize + u;
 			flippedMesh.push_back(terrain.m_vVertices.at(iIndex));
-			flippedNormals.push_back(terrain.m_vNormals.at(iIndex));
 		}
 	}
 
 	// Append on Details Information
 	terrain.m_vVertices = flippedMesh;
-	terrain.m_vNormals = flippedNormals;
+
+	// Swap Boolean vectors
+	vector< bool > bTemp = terrain.m_bAddedPointFlagsU;
+	terrain.m_bAddedPointFlagsU = terrain.m_bAddedPointFlagsV;
+	terrain.m_bAddedPointFlagsV = bTemp;
+
+	// Swap Even Identifiers
+	bool bEvenTemp = terrain.m_bEvenSplitU;
+	terrain.m_bEvenSplitU = terrain.m_bEvenSplitV;
+	terrain.m_bEvenSplitV = bEvenTemp;
 
 	// Swap U and V sizes
 	terrain.m_iUSize = terrain.m_iUSize ^ terrain.m_iVSize;
@@ -700,23 +767,37 @@ void Terrain::applyTerrain(const Terrain* pTerrain)
 			for (unsigned int i = 0; i < MIN_BLEND_RS; ++i)
 				reduce(m_vApplicationMesh);
 
+			unsigned int iCurrUCoarseSize = m_defaultTerrain.getCoarseUSize();
+			unsigned int iCurrVCoarseSize = m_defaultTerrain.getCoarseVSize();
+
+			unsigned int iAppUCoarseSize = m_vApplicationMesh.getCoarseUSize();
+			unsigned int iAppVCoarseSize = m_vApplicationMesh.getCoarseVSize();
+
 			// Further Reverse Subdivide until able to apply Mesh
-			while (m_vApplicationMesh.m_iUSize > m_defaultTerrain.m_iUSize && m_vApplicationMesh.m_iVSize > m_defaultTerrain.m_iVSize)
+			while (iAppUCoarseSize > iCurrUCoarseSize && iAppVCoarseSize > iCurrVCoarseSize)
 			{
 				reduce(m_vApplicationMesh);
 
-				if (m_vApplicationMesh.m_iUSize < MRLIMIT_MIN || m_vApplicationMesh.m_iVSize < MRLIMIT_MIN)
+				iAppUCoarseSize = m_vApplicationMesh.getCoarseUSize();
+				iAppVCoarseSize = m_vApplicationMesh.getCoarseVSize();
+
+				if (iAppUCoarseSize < MRLIMIT_MIN || iAppVCoarseSize < MRLIMIT_MIN)
 					break;
 			}
 
-			// Check to make sure it's possible to subdivide
-			if (m_vApplicationMesh.m_iUSize > m_defaultTerrain.m_iUSize || m_vApplicationMesh.m_iVSize > m_defaultTerrain.m_iVSize)
+			if (iAppUCoarseSize > iCurrUCoarseSize || iAppVCoarseSize > iCurrVCoarseSize)
 			{
-				cout << "Unable to Subdivide Enough to fit Base Mesh.\n";
+				cout << "Unable to blend mesh, cannot subdivide far enough.";
 				m_vApplicationMesh.clear();
 			}
-			else  // Set Environment for Applying Mesh
+			else
 			{
+				// Refine Default terrain to default resolution
+				while (m_defaultTerrain.m_iExp != 0)
+					grow(m_defaultTerrain);
+
+				addDetails(m_defaultTerrain, m_vApplicationMesh.m_iExp);
+
 				// Force Height Map active
 				if (m_bHeightMapStored)
 					toggleHeightMap();
@@ -728,9 +809,7 @@ void Terrain::applyTerrain(const Terrain* pTerrain)
 				m_iLockedStart = -1;
 				m_vSavedSubset.clear();
 			}
-				   
 		}
-		
 	}
 }
 
@@ -904,17 +983,20 @@ bool Terrain::getSelectedArea(unsigned int &iStartU, unsigned int &iStartV, unsi
 	{
 		unsigned int iHalfU = m_vApplicationMesh.getCoarseUSize() >> 1;
 		unsigned int iHalfV = m_vApplicationMesh.getCoarseVSize() >> 1;
+		int iQuadSU, iQuadSV, iQuadEU, iQuadEV;
 
 		vec2 vPoint = Mouse_Handler::getInstance(nullptr)->getPosition();
 		vec3 vIntersection = GraphicsManager::getInstance(nullptr)->getIntersection(vPoint.x, vPoint.y);
-		get_Quad_Points(vIntersection.x, vIntersection.z, iWorkingSU, iWorkingSV, iWorkingEU, iWorkingEV);
+		get_Quad_Points(vIntersection.x, vIntersection.z, iQuadSU, iQuadSV, iQuadEU, iQuadEV);
 		bool bOddU = (m_vApplicationMesh.getCoarseUSize() & 1);
 		bool bOddV = (m_vApplicationMesh.getCoarseVSize() & 1);
 		
-		iWorkingSU = (bOddU) ? iWorkingSU - iHalfU : iWorkingSU - iHalfU + 1;
-		iWorkingSV = (bOddV) ? iWorkingSV - iHalfV : iWorkingSV - iHalfV + 1;
-		iWorkingEU = (bOddU) ? iWorkingSU + iHalfU : iWorkingEU + iHalfU - 1;
-		iWorkingEV = (bOddV) ? iWorkingSV + iHalfV : iWorkingEV + iHalfV - 1;
+		bReturnValue &= (iQuadSU >= 0);
+
+		iWorkingSU = (bOddU) ? iQuadSU - iHalfU : iQuadSU - iHalfU + 1;
+		iWorkingSV = (bOddV) ? iQuadSV - iHalfV : iQuadSV - iHalfV + 1;
+		iWorkingEU = (bOddU) ? iQuadSU + iHalfU : iQuadEU + iHalfU - 1;
+		iWorkingEV = (bOddV) ? iQuadSV + iHalfV : iQuadEV + iHalfV - 1;
 	}
 	
 	// Bound the Expanded area to within Default Terrain Boundaries.
@@ -1137,7 +1219,7 @@ void Terrain::calculateBarries(tMesh& pTerrain)
 		// Loop through Each Point and apply the Barycentric coordinates (in Coarse Space)
 		int uSize = pTerrain.getCoarseUSize();
 
-		for (int i = 0; i < pTerrain.m_vIndices.size(); i+=3) // Loop through entire quad, ignoring duplicates
+		for (unsigned int i = 0; i < pTerrain.m_vIndices.size(); i+=3) // Loop through entire quad, ignoring duplicates
 		{
 
 			if (i/6 % (uSize-1) == 0 && i != 0) // 6 Quad size

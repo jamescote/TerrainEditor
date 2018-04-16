@@ -193,6 +193,7 @@ private:
 	void reduceU(tMesh&);
 	void grow(tMesh&);	
 	void growU(tMesh&);
+	void addDetails(tMesh& m_defaultTerrain, unsigned int iLevelOfDetail);
 
 
 };
