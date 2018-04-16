@@ -28,7 +28,7 @@ private:
 	struct tMesh
 	{
 		// Vertex Data
-		vector< vec3 > m_vVertices, m_vNormals;
+		vector< vec3 > m_vVertices;
 		vector< unsigned int > m_vIndices, m_vBarries;
 		vec3 m_vStartPos, m_vEndPos;
 		vector< vec2 > m_vUVs;
@@ -53,7 +53,6 @@ private:
 			m_vIndices.clear();
 			m_vBarries.clear();
 			m_vUVs.clear();
-			m_vNormals.clear();
 			m_vEndPos = m_vStartPos = vec3(0.0f);
 			m_fWidth = m_fDepth = -1.0f;
 			m_iUSize = m_iVSize = 0;
@@ -126,7 +125,7 @@ private:
 		{
 			cout << "Mesh Details:\n\t";
 			cout << "Num Verts: " << m_vVertices.size() << "; Indices: " << m_vIndices.size()
-				<< "; Barries: " << m_vBarries.size() << "; UVs: " << m_vUVs.size() << "; Normals: " << m_vNormals.size() << endl;
+				<< "; Barries: " << m_vBarries.size() << "; UVs: " << m_vUVs.size() << endl;
 			cout << "\tStartPos: {" << m_vStartPos.x << ", " << m_vStartPos.y << ", " << m_vStartPos.z << "}; EndPos: {"
 				<< m_vEndPos.x << ", " << m_vEndPos.y << ", " << m_vEndPos.z << "}\n\t";
 			cout << "Width: " << m_fWidth << "; Depth: " << m_fDepth << endl;
@@ -158,6 +157,7 @@ private:
 	// Main TerrainMesh
 	tMesh m_defaultTerrain;
 	tMesh m_vSavedSubset, m_vCurrentSubset, m_vApplicationMesh;
+	tMesh m_vApplicationMask;
 	
 	//vector< vec3 > m_vSavedSubset, m_vCurrentSubset;
 
@@ -180,12 +180,8 @@ private:
 	bool boundArea(int& iStartU, int& iStartV, int& iEndU, int& iEndV);
 	void loadMeshData(const tMesh& pTerrain);
 	void blendMesh();
-	int blendCoarsePoints(unsigned int iStartU, unsigned int iStartV, unsigned int iEndU, unsigned int iEndV);
-	int replaceDetails(unsigned int iStartU, unsigned int iStartV, unsigned int iEndU, unsigned int iEndV, unsigned int iTerrRowSize, unsigned int iAppRowSize );
-	int replaceSquaredDetails(unsigned int iStartU, unsigned int iStartV, unsigned int iEndU, unsigned int iEndV, unsigned int& iTerrIndex,
-								unsigned int& iTerrUSize, unsigned int& iTerrVSize, unsigned int& iAppUSize, unsigned int& iAppVSize);
 
-	GLuint m_iVertexArray, m_iBaryCentric, m_iVertexBuffer, m_iNormalBuffer, m_iTextureBuffer, m_iIndicesBuffer;
+	GLuint m_iVertexArray, m_iBaryCentric, m_iVertexBuffer, m_iTextureBuffer, m_iIndicesBuffer;
 
 	void get_Quad_Points( float fPosX, float fPosZ, int &iIndex1, int &iIndex2, int &iIndex3, int &iIndex4 );
 	void flip(tMesh&);
@@ -194,6 +190,7 @@ private:
 	void grow(tMesh&);	
 	void growU(tMesh&);
 	void addDetails(tMesh& m_defaultTerrain, unsigned int iLevelOfDetail);
+	void setupApplicationMask();
 
 
 };
