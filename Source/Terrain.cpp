@@ -1120,22 +1120,32 @@ void Terrain::calculateBarries(tMesh& pTerrain)
 		// Local Variables
 		unsigned int iArry[3] = { 0, 1, 2 };
 		unsigned int iX = 0;
-		pTerrain.m_vBarries.reserve(pTerrain.m_vIndices.size());
-		unsigned int iCoarseUSize = pTerrain.getCoarseUSize();
-		unsigned int iCoarseVSize = pTerrain.getCoarseVSize();
+		pTerrain.m_vBarries.resize(pTerrain.m_vVertices.size(), 0);
 
 		// Loop through Each Point and apply the Barycentric coordinates (in Coarse Space)
-		for (unsigned int v = 0; v < iCoarseVSize; ++v)
+		int uSize = pTerrain.getCoarseUSize();
+
+		for (int i = 0; i < pTerrain.m_vIndices.size(); i+=3) // Loop through entire quad, ignoring duplicates
 		{
-			for (unsigned int u = 0; u < iCoarseUSize; u += 3)
+
+			if (i/6 % (uSize-1) == 0 && i != 0) // 6 Quad size
 			{
-				pTerrain.m_vBarries.push_back(iArry[iX]);
-				if (u + 1 < iCoarseUSize)
-					pTerrain.m_vBarries.push_back(iArry[(iX + 1) % 3]);
-				if (u + 2 < iCoarseUSize)
-					pTerrain.m_vBarries.push_back(iArry[(iX + 2) % 3]);
+				iX = ((iX + abs((uSize%3)-3)) % 3);
 			}
-			iX = (iX + 2) % 3;
+
+			iX = (iX + 1) % 3;
+			pTerrain.m_vBarries[pTerrain.m_vIndices[i+1]] = iArry[(iX)];
+
+			iX = (iX + 1) % 3;
+			pTerrain.m_vBarries[pTerrain.m_vIndices[i+2]] = iArry[(iX)];
+
+			i+=3;
+
+			iX = (iX + 1) % 3;
+			pTerrain.m_vBarries[pTerrain.m_vIndices[i+1]] = iArry[(iX)];
+
+			iX = (iX + 1) % 3; 											 
+			pTerrain.m_vBarries[pTerrain.m_vIndices[i+2]] = iArry[(iX)];
 		}
 	}
 }
