@@ -290,10 +290,11 @@ void Terrain::grow(tMesh& terrain)
 {
 
 	/**********************If Empty*********************/
-	if( terrain.m_iStep == 1 )
-	{
-		addDetails(terrain, 1);
-	}
+	//if( terrain.m_iStep == 1 )
+	//{
+	//	//addDetails(terrain, 1);
+	//
+	//}
 	/***************************************************/
 
 	// V-Columns
@@ -302,25 +303,28 @@ void Terrain::grow(tMesh& terrain)
 
 	// U-Rows
 	flip(terrain);
-	if (terrain.m_bAddedPointFlagsV.back())
+	if (!terrain.m_bAddedPointFlagsV.empty() && terrain.m_bAddedPointFlagsV.back())
 	{
 		terrain.m_vVertices.erase(terrain.m_vVertices.end() - terrain.m_iUSize, terrain.m_vVertices.end());
 		terrain.m_iVSize--;
+		terrain.m_bAddedPointFlagsV.pop_back();
 	}
 	growU(terrain);
 	
-	terrain.m_iStep >>= 1;
-	terrain.m_iExp--;
+	if (terrain.m_iStep != 1)
+	{
+		terrain.m_iStep >>= 1;
+		terrain.m_iExp--;
+	}
 	
-	if (terrain.m_bAddedPointFlagsU.back())
+	if (!terrain.m_bAddedPointFlagsU.empty() && terrain.m_bAddedPointFlagsU.back())
 	{
 		flip(terrain);
 		terrain.m_vVertices.erase(terrain.m_vVertices.end() - terrain.m_iUSize, terrain.m_vVertices.end());
 		terrain.m_iVSize--; // Flip Swaps this to Usize
 		flip(terrain);
+		terrain.m_bAddedPointFlagsU.pop_back();
 	}
-	terrain.m_bAddedPointFlagsU.pop_back();
-	terrain.m_bAddedPointFlagsV.pop_back();
 
 	initMesh(terrain);
 }
@@ -330,10 +334,14 @@ void Terrain::growU(tMesh& terrain)
 	// Local Variables
 	unsigned int vIndex = 0;
 	vector<vec3> E;
+	if (terrain.m_iStep == 1)
+		E.resize(terrain.m_iUSize * 2);
 	vector<vec3> C;
 	unsigned int fullStep = terrain.m_iStep;
-	unsigned int halfStep = terrain.m_iStep >> 1;
+	unsigned int halfStep = (terrain.m_iStep == 1 ? 1 : terrain.m_iStep >> 1);
 	unsigned int iNumDetails = terrain.getCoarseUSize() - 2;
+	unsigned int iTrueUSize = terrain.m_iUSize + (terrain.m_iStep == 1 ? terrain.m_iUSize - 2 : 0);
+	unsigned int i;
 
 	// Loop Through Every Row and apply Subdivision
 	for (unsigned int v = 0; v < terrain.m_iVSize; ++v)
@@ -341,33 +349,36 @@ void Terrain::growU(tMesh& terrain)
 		/*************************E*************************/
 		vec3 D1, D2, D3;
 
-		D1 = terrain.m_vVertices.at(vIndex + halfStep);
-		D2 = terrain.m_vVertices.at(vIndex + halfStep + (1 * fullStep));
-		D3 = terrain.m_vVertices.at(vIndex + halfStep + (2 * fullStep));
-
-		// Apply Starting Computation
-		E.clear();
-		E.push_back(vec3(0));	// E1 = 0 D1
-		E.push_back(HALF * D1);	// E2 = 1/2 D1
-		E.push_back((-THREEQUARTER * D1) + (QUARTER * D2));		// E3 = -3/4 D1 + 1/4 D2
-		E.push_back((-QUARTER * D1) + (THREEQUARTER * D2));		// E4 = -1/4 D1 + 3/4 D2
-		E.push_back((-THREEQUARTER * D2) - (QUARTER * D3));		// E5 = -3/4 D2 - 1/4 D3
-		E.push_back((-QUARTER * D2) + (-THREEQUARTER * D3));	// E6 = -1/4 D2 - 3/4 D3
-
-		unsigned int i;
-		for (i = 2; i < iNumDetails - 1; ++i)
+		// Pull Details
+		if ( terrain.m_iStep > 1 )
 		{
-			vec3 DI, DII;
-			DI = terrain.m_vVertices.at(halfStep + (i  *fullStep) + vIndex);
-			DII = terrain.m_vVertices.at(halfStep + ((i + 1)*fullStep) + vIndex);
-			E.push_back((THREEQUARTER * DI) + (-QUARTER * DII));
-			E.push_back((QUARTER * DI) + (-THREEQUARTER * DII));
-		}
+			D1 = terrain.m_vVertices.at(vIndex + halfStep);
+			D2 = terrain.m_vVertices.at(vIndex + halfStep + (1 * fullStep));
+			D3 = terrain.m_vVertices.at(vIndex + halfStep + (2 * fullStep));
 
-		// Final E Calculations
-		vec3 DS = terrain.m_vVertices.at(vIndex + terrain.m_iUSize - 3);
-		E.push_back(HALF * DS);
-		E.push_back(vec3(0));	
+			// Apply Starting Computation
+			E.clear();
+			E.push_back(vec3(0));	// E1 = 0 D1
+			E.push_back(HALF * D1);	// E2 = 1/2 D1
+			E.push_back((-THREEQUARTER * D1) + (QUARTER * D2));		// E3 = -3/4 D1 + 1/4 D2
+			E.push_back((-QUARTER * D1) + (THREEQUARTER * D2));		// E4 = -1/4 D1 + 3/4 D2
+			E.push_back((-THREEQUARTER * D2) - (QUARTER * D3));		// E5 = -3/4 D2 - 1/4 D3
+			E.push_back((-QUARTER * D2) + (-THREEQUARTER * D3));	// E6 = -1/4 D2 - 3/4 D3
+
+			for (i = 2; i < iNumDetails - 1; ++i)
+			{
+				vec3 DI, DII;
+				DI = terrain.m_vVertices.at(halfStep + (i  *fullStep) + vIndex);
+				DII = terrain.m_vVertices.at(halfStep + ((i + 1)*fullStep) + vIndex);
+				E.push_back((THREEQUARTER * DI) + (-QUARTER * DII));
+				E.push_back((QUARTER * DI) + (-THREEQUARTER * DII));
+			}
+
+			// Final E Calculations
+			vec3 DS = terrain.m_vVertices.at(vIndex + terrain.m_iUSize - 3);
+			E.push_back(HALF * DS);
+			E.push_back(vec3(0));
+		}
 
 		/*************************E*************************/
 
@@ -378,6 +389,9 @@ void Terrain::growU(tMesh& terrain)
 
 		C.push_back(terrain.m_vVertices[(terrain.m_iUSize - 2) + vIndex]);
 		C.push_back(terrain.m_vVertices[(terrain.m_iUSize - 1) + vIndex]);
+
+		if (terrain.m_iStep == 1) // No Details: make space for the new Verts.
+			terrain.m_vVertices.insert(terrain.m_vVertices.begin() + terrain.m_iUSize + vIndex, terrain.m_iUSize - 2, vec3(0.0));
 
 		/***********************C TO F**********************/
 		vec3 CI, CII, EI, EII;
@@ -412,13 +426,15 @@ void Terrain::growU(tMesh& terrain)
 		CII = *(C.end() - 1);
 
 		// Set them using boundary end condition
-		terrain.m_vVertices[(terrain.m_iUSize - 2) + vIndex] = ((HALF * CI) + (HALF * CII) + E.at(j));
-		terrain.m_vVertices[(terrain.m_iUSize - 1) + vIndex] = (CII + E.at(j + 1));
+		terrain.m_vVertices[(iTrueUSize - 2) + vIndex] = ((HALF * CI) + (HALF * CII) + E.at(j));
+		terrain.m_vVertices[(iTrueUSize - 1) + vIndex] = (CII + E.at(j + 1));
 
 		// Increment row index
-		vIndex += terrain.m_iUSize;
+		vIndex += iTrueUSize;
 		C.clear();
 	}
+
+	terrain.m_iUSize = iTrueUSize;
 }
 
 /********************************************************************\
