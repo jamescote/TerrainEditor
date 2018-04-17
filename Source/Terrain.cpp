@@ -234,14 +234,15 @@ void Terrain::addDetails(tMesh& pTerrain, unsigned int iLevelOfDetail)
 			// compute the additional verts that need to be removed at each step in the subdivision.
 			for (unsigned int i = 1; i < iLevelOfDetail; ++i)
 			{
-				bool bAddedPoint = (iNumDetails != (pTerrain.m_iUSize - 2));
-				if (bAddedPoint) // Odd, a Vertex would need to be added at this stage.
-					pTerrain.m_iUSize--;
-
+				//pTerrain.m_iUSize += pTerrain.m_iUSize - 2;
+				pTerrain.m_bAddedPointFlagsU.push_back(false);
+				if ((iNumDetails != (pTerrain.m_iUSize - 2)))
+					pTerrain.m_iUSize++;
+				
 				pTerrain.m_iUSize += iNumDetails;
 				iNumDetails <<= 1;
-				pTerrain.m_bAddedPointFlagsU.push_back(bAddedPoint);
-				if (i+1 == iLevelOfDetail)
+				//pTerrain.m_bAddedPointFlagsU.push_back(bAddedPoint);
+				if (i + 1 == iLevelOfDetail)
 					pTerrain.m_iUSize++; // Usize is Num of points in a row, add one since base zero.
 			}
 
@@ -301,6 +302,11 @@ void Terrain::grow(tMesh& terrain)
 
 	// U-Rows
 	flip(terrain);
+	if (terrain.m_bAddedPointFlagsV.back())
+	{
+		terrain.m_vVertices.erase(terrain.m_vVertices.end() - terrain.m_iUSize, terrain.m_vVertices.end());
+		terrain.m_iVSize--;
+	}
 	growU(terrain);
 	
 	terrain.m_iStep >>= 1;
@@ -313,11 +319,6 @@ void Terrain::grow(tMesh& terrain)
 		terrain.m_iVSize--; // Flip Swaps this to Usize
 		flip(terrain);
 	}
-	if (terrain.m_bAddedPointFlagsV.back())
-	{
-		terrain.m_vVertices.erase(terrain.m_vVertices.end() - terrain.m_iUSize, terrain.m_vVertices.end());
-		terrain.m_iVSize--; // Flip Swaps this to Usize
-	}
 	terrain.m_bAddedPointFlagsU.pop_back();
 	terrain.m_bAddedPointFlagsV.pop_back();
 
@@ -329,6 +330,7 @@ void Terrain::growU(tMesh& terrain)
 	// Local Variables
 	unsigned int vIndex = 0;
 	vector<vec3> E;
+	vector<vec3> C;
 	unsigned int fullStep = terrain.m_iStep;
 	unsigned int halfStep = terrain.m_iStep >> 1;
 	unsigned int iNumDetails = terrain.getCoarseUSize() - 2;
@@ -369,12 +371,19 @@ void Terrain::growU(tMesh& terrain)
 
 		/*************************E*************************/
 
+		/***********************Extract C**********************/
+
+		for( unsigned int i = 0; i < iNumDetails; ++i )
+			C.push_back(terrain.m_vVertices[(i*fullStep) + vIndex]);
+
+		C.push_back(terrain.m_vVertices[(terrain.m_iUSize - 2) + vIndex]);
+		C.push_back(terrain.m_vVertices[(terrain.m_iUSize - 1) + vIndex]);
 
 		/***********************C TO F**********************/
 		vec3 CI, CII, EI, EII;
 
-		CI = terrain.m_vVertices[vIndex];
-		CII = terrain.m_vVertices[vIndex + fullStep];
+		CI = C[0];
+		CII = C[1];
 
 		EI = E[0];
 		EII = E[1];
@@ -384,10 +393,10 @@ void Terrain::growU(tMesh& terrain)
 
 		// Loop through coarse points and apply Efficient Subdivision Algorithm.
 		unsigned int j = 2;
-		for (i = 1; i < iNumDetails; i++)
+		for (i = 1; i < C.size() - 2; i++)
 		{
-			CI = terrain.m_vVertices[ vIndex + ((i) * fullStep)];
-			CII = terrain.m_vVertices[vIndex + ((i + 1) * fullStep)];
+			CI = C[i];
+			CII = C[i+1];
 
 			EI = E[j];
 			EII = E[j + 1];
@@ -399,8 +408,8 @@ void Terrain::growU(tMesh& terrain)
 		}
 
 		// Grab last two in row and apply subdivision on them.
-		CI = terrain.m_vVertices [(terrain.m_iUSize - 2) + vIndex];
-		CII = terrain.m_vVertices[(terrain.m_iUSize - 1) + vIndex];
+		CI = *(C.end() - 2);
+		CII = *(C.end() - 1);
 
 		// Set them using boundary end condition
 		terrain.m_vVertices[(terrain.m_iUSize - 2) + vIndex] = ((HALF * CI) + (HALF * CII) + E.at(j));
@@ -408,6 +417,7 @@ void Terrain::growU(tMesh& terrain)
 
 		// Increment row index
 		vIndex += terrain.m_iUSize;
+		C.clear();
 	}
 }
 
@@ -538,7 +548,6 @@ void Terrain::reduceU(tMesh& terrain)
 			vec3 vPushOut = *(vApplicationCurve.end() - 2);
 			vec3 vTranslateVector = vPushOut - *(vApplicationCurve.end() - 3);
 			vApplicationCurve.back() = vPushOut + vec3(vTranslateVector.x, 0.0f, vTranslateVector.z);
-			//terrain.m_vVertices.insert(terrain.m_vVertices.begin() + (v+1) * terrain.m_iUSize, vApplicationCurve.back());
 		}
 
 		// First 4 Points
@@ -548,15 +557,12 @@ void Terrain::reduceU(tMesh& terrain)
 		vec3 F4 = vApplicationCurve.at(3);
 
 		// Apply Boundary Conditions for Vertices
-		//meshV.push_back(C1);
-		//*vMeshInserter = C1;																		// C1 = F1
+		*vMeshInserter = F1;																		// C1 = F1
 		vMeshInserter += iStepSize;
 		// Apply Boundary Conditions for Details
-		//meshD.push_back(((-HALF)*C1) + (1 * C2) + ((-THREEQUARTER)*C3) + ((-QUARTER)*C4));
 		*vMeshInserter = ((-HALF)*F1) + F2 - ((THREEQUARTER)*F3) + ((QUARTER)*F4);			// D1 = -1/2F1 + F2 - 3/4F2 + 1/4F4
 		vMeshInserter += iStepSize;
 
-		//meshV.push_back(((-HALF)*C1) + (1*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
 		*vMeshInserter = ((-HALF)*F1) + F2 + ((THREEQUARTER)*F3) - ((QUARTER)*F4);			// C2 = -1/2F1 + F2 + 3/4F3 - 1/4F4
 		vMeshInserter += iStepSize;
 
@@ -564,13 +570,13 @@ void Terrain::reduceU(tMesh& terrain)
 		F2 = vApplicationCurve.at(3);
 		F3 = vApplicationCurve.at(4);
 		F4 = vApplicationCurve.at(5);
-		//meshD.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((-THREEQUARTER)*C3) + ((QUARTER)*C4));
+		
 		*vMeshInserter = ((-QUARTER)*F1) + ((THREEQUARTER)*F2) - ((THREEQUARTER)*F3) + ((QUARTER)*F4); // D2 = -1/4F3 + 3/4F4 - 3/4F5 + 1/4F6
 		vMeshInserter += iStepSize;
 
 		// Recursively Compute Information For middle curve
 		unsigned int i = 2;
-		for (i; i < vApplicationCurve.size() - 4; i += 2)
+		for (i; i < vApplicationCurve.size() - 5; i += 2)
 		{
 			F1 = vApplicationCurve.at(i);
 			F2 = vApplicationCurve.at(i + 1);
@@ -580,19 +586,17 @@ void Terrain::reduceU(tMesh& terrain)
 			// Details
 			if (i >= 4)
 			{
-				//meshD.push_back(((QUARTER)*C1) - ((THREEQUARTER)*C2) + ((THREEQUARTER)*C3) - ((QUARTER)*C4));
 				*vMeshInserter = ((QUARTER)*F1) - ((THREEQUARTER)*F2) + ((THREEQUARTER)*F3) - ((QUARTER)*F4); // Dj = 1/4Fi - 3/4Fi+1 + 3/4Fi+2 - 1/4Fi+3
 				vMeshInserter += iStepSize;
 			}
 
 			// Coarse Point
-			//meshV.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((THREEQUARTER)*C3) + ((-QUARTER)*C4));
 			*vMeshInserter = ((-QUARTER)*F1) + ((THREEQUARTER)*F2) + ((THREEQUARTER)*F3) - ((QUARTER)*F4); // Cj = -1/4Fi + 3/4Fi+1 + 3/4Fi+2 - 1/4Fi+3
 			vMeshInserter += iStepSize;
 		}
 
 		// m-3 zero based
-		i = vApplicationCurve.size() - 4;
+		//i = vApplicationCurve.size() - 4;
 		// Apply End Boundary Filters
 		F1 = vApplicationCurve.at(i);
 		F2 = vApplicationCurve.at(i + 1);
@@ -600,7 +604,6 @@ void Terrain::reduceU(tMesh& terrain)
 		F4 = vApplicationCurve.at(i + 3);
 
 		vMeshInserter = terrain.m_vVertices.begin() + terrain.m_iUSize + vIndex - 3;
-		//meshD.push_back(((QUARTER)*C1) - ((THREEQUARTER)*C2) + ((1)*C3) - ((HALF)*C4));
 		*vMeshInserter = ((QUARTER)*F1) - ((THREEQUARTER)*F2) + F3 - ((HALF)*F4); // Dj = 1/4Fm-3 - 3/4Fm-2 + Fm-1 - 1/2Fm
 		++vMeshInserter;
 
@@ -609,8 +612,6 @@ void Terrain::reduceU(tMesh& terrain)
 		++vMeshInserter;
 		*vMeshInserter = F4;
 		++vMeshInserter; // Cj+1 == Fm
-		// Apply Algorithm on U-Curve
-		//applyUReverseSubdivision(vApplicationCurve, vMeshInserter, terrain.m_iStep);
 
 		// Reset Curve.
 		vApplicationCurve.clear();
@@ -860,34 +861,44 @@ void Terrain::setupApplicationMask()
 void Terrain::blendMesh()
 {
 	unsigned int iStartU, iStartV, iEndU, iEndV;
-	if (getSelectedArea(iStartU, iStartV, iEndU, iEndV, true))
+	if (getSelectedArea(iStartU, iStartV, iEndU, iEndV, false))
 	{
+		iEndU-=2;
+		iEndV-=2;
+
+		m_defaultTerrain.coarseToIndexSpace(iStartU, iStartV);
+		m_defaultTerrain.coarseToIndexSpace(iEndU, iEndV);
 		unsigned int u = iStartU;
 		unsigned int v = iStartV;
-	
-		for (vector<vec3>::iterator vIter = m_vApplicationMesh.m_vVertices.begin();
-			vIter != m_vApplicationMesh.m_vVertices.end();
-			++vIter)
-		{
-			// Replace Details in Default Terrain with applied Details
-			if (u % m_defaultTerrain.m_iStep || v % m_defaultTerrain.m_iStep)
-			{
-				//cout << "Replaced: " << m_defaultTerrain.m_vVertices[u + v*m_defaultTerrain.m_iUSize].x << ", " << m_defaultTerrain.m_vVertices[u + v*m_defaultTerrain.m_iUSize].y << ", " << m_defaultTerrain.m_vVertices[u + v*m_defaultTerrain.m_iUSize].z <<
-				//	" with: {" << vIter->x << ", " << vIter->y << ", " << vIter->z << "}\n";
-				m_defaultTerrain.m_vVertices[u + v*m_defaultTerrain.m_iUSize] = (*vIter);
-			}
-			//else
-			//{
-			//	cout << "skipped: " << m_defaultTerrain.m_vVertices[u + v*m_defaultTerrain.m_iUSize].x << ", " << m_defaultTerrain.m_vVertices[u + v*m_defaultTerrain.m_iUSize].y << ", " << m_defaultTerrain.m_vVertices[u + v*m_defaultTerrain.m_iUSize].z <<
-			//		"vs. {"  << vIter->x << ", " << vIter->y << ", " << vIter->z << "}\n";
-			//}
+		unsigned int iAppU, iAppV;
 
-			if ((++u) - iStartU >= m_vApplicationMesh.m_iUSize - 2 - ((m_vApplicationMesh.m_iStep >> 1) + 1))
+		unsigned int iAppCoarseU = m_vApplicationMesh.getCoarseUSize();
+		unsigned int iAppCoarseV = m_vApplicationMesh.getCoarseVSize();
+
+		for (iAppV = 0; iAppV <= (m_vApplicationMesh.m_iVSize - 2 - ((m_vApplicationMesh.m_iStep >> 1) + 1)); ++iAppV)
+		{
+			for (iAppU = 0; iAppU <= (m_vApplicationMesh.m_iUSize - 2 - ((m_vApplicationMesh.m_iStep >> 1) + 1)); ++iAppU)
 			{
-				u = iStartU;
-				++v;
-				vIter = m_vApplicationMesh.m_vVertices.begin() + (v-iStartV)*m_vApplicationMesh.m_iUSize;
+				if (iAppU % m_vApplicationMesh.m_iStep && iAppV % m_vApplicationMesh.m_iStep )
+					m_defaultTerrain.m_vVertices[u + v*m_defaultTerrain.m_iUSize] = m_vApplicationMesh.m_vVertices[iAppU + (iAppV * m_vApplicationMesh.m_iUSize)];
+				u++;
+				//iAppU = u - iStartU;
+				//iAppV = v - iStartV;
+				//if (u % m_defaultTerrain.m_iStep || v % m_defaultTerrain.m_iStep)
+				//{
+				//	cout << "Replaced: " << m_defaultTerrain.m_vVertices[u + v*m_defaultTerrain.m_iUSize].x << ", " << m_defaultTerrain.m_vVertices[u + v*m_defaultTerrain.m_iUSize].y << ", " << m_defaultTerrain.m_vVertices[u + v*m_defaultTerrain.m_iUSize].z <<
+				//		" with: {" << m_vApplicationMesh.m_vVertices[iAppU + (iAppV * m_vApplicationMesh.m_iUSize)].x << ", " << m_vApplicationMesh.m_vVertices[iAppU + (iAppV * m_vApplicationMesh.m_iUSize)].y << ", " << m_vApplicationMesh.m_vVertices[iAppU + (iAppV * m_vApplicationMesh.m_iUSize)].z << "}\n";
+				//	
+				//	m_defaultTerrain.m_vVertices[u + v*m_defaultTerrain.m_iUSize] = m_vApplicationMesh.m_vVertices[iAppU + (iAppV * m_vApplicationMesh.m_iUSize)];
+				//}
+				//else
+				//{
+				//	cout << "skipped: " << m_defaultTerrain.m_vVertices[u + v*m_defaultTerrain.m_iUSize].x << ", " << m_defaultTerrain.m_vVertices[u + v*m_defaultTerrain.m_iUSize].y << ", " << m_defaultTerrain.m_vVertices[u + v*m_defaultTerrain.m_iUSize].z <<
+				//		"vs. {"  << m_vApplicationMesh.m_vVertices[iAppU + (iAppV * m_vApplicationMesh.m_iUSize)].x << ", " << m_vApplicationMesh.m_vVertices[iAppU + (iAppV * m_vApplicationMesh.m_iUSize)].y << ", " << m_vApplicationMesh.m_vVertices[iAppU + (iAppV * m_vApplicationMesh.m_iUSize)].z << "}\n";
+				//}
 			}
+			u = iStartU;
+			v++;
 		}
 
 		m_bApplicationMode = false;
