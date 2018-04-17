@@ -537,12 +537,12 @@ void Terrain::reduceU(tMesh& terrain)
 {
 	// Local Variables
 	vector< vec3 > vApplicationCurve;
-	vector< vec3 >::iterator vMeshInserter = terrain.m_vVertices.begin();
 	unsigned int iCoarseUSize = terrain.getCoarseUSize();
 	bool isOdd = (iCoarseUSize & 1) != 0;
 	//iCoarseUSize += isOdd;
 	unsigned int vIndex = 0;
-	unsigned int iStepSize = terrain.m_iStep;
+	unsigned int vInsertIndex = 0;
+	unsigned int iStepSize = terrain.m_iStep << 1;
 
 	// Loop for Each U-Curve on Mesh
 	for (unsigned int v = 0; v < terrain.m_iVSize; v++)
@@ -566,68 +566,73 @@ void Terrain::reduceU(tMesh& terrain)
 			vApplicationCurve.back() = vPushOut + vec3(vTranslateVector.x, 0.0f, vTranslateVector.z);
 		}
 
+		/*****************C*****************/
 		// First 4 Points
-		vec3 F1 = vApplicationCurve.at(0);
-		vec3 F2 = vApplicationCurve.at(1);
-		vec3 F3 = vApplicationCurve.at(2);
-		vec3 F4 = vApplicationCurve.at(3);
+		vec3 F1 = vApplicationCurve[0];
+		vec3 F2 = vApplicationCurve[1];
+		vec3 F3 = vApplicationCurve[2];
+		vec3 F4 = vApplicationCurve[3];
 
+		vInsertIndex = vIndex;
 		// Apply Boundary Conditions for Vertices
-		*vMeshInserter = F1;																		// C1 = F1
-		vMeshInserter += iStepSize;
-		// Apply Boundary Conditions for Details
-		*vMeshInserter = ((-HALF)*F1) + F2 - ((THREEQUARTER)*F3) + ((QUARTER)*F4);			// D1 = -1/2F1 + F2 - 3/4F2 + 1/4F4
-		vMeshInserter += iStepSize;
+		terrain.m_vVertices[vInsertIndex] = F1;																		// C1 = F1
+		vInsertIndex += iStepSize;
 
-		*vMeshInserter = ((-HALF)*F1) + F2 + ((THREEQUARTER)*F3) - ((QUARTER)*F4);			// C2 = -1/2F1 + F2 + 3/4F3 - 1/4F4
-		vMeshInserter += iStepSize;
-
-		F1 = vApplicationCurve.at(2);
-		F2 = vApplicationCurve.at(3);
-		F3 = vApplicationCurve.at(4);
-		F4 = vApplicationCurve.at(5);
-		
-		*vMeshInserter = ((-QUARTER)*F1) + ((THREEQUARTER)*F2) - ((THREEQUARTER)*F3) + ((QUARTER)*F4); // D2 = -1/4F3 + 3/4F4 - 3/4F5 + 1/4F6
-		vMeshInserter += iStepSize;
+		terrain.m_vVertices[vInsertIndex] = ((-HALF)*F1) + F2 + ((THREEQUARTER)*F3) - ((QUARTER)*F4);			// C2 = -1/2F1 + F2 + 3/4F3 - 1/4F4
+		vInsertIndex += iStepSize;
 
 		// Recursively Compute Information For middle curve
 		unsigned int i = 2;
-		for (i; i < vApplicationCurve.size() - 5; i += 2)
+		for (i; i < vApplicationCurve.size() - 4; i += 2)
 		{
-			F1 = vApplicationCurve.at(i);
-			F2 = vApplicationCurve.at(i + 1);
-			F3 = vApplicationCurve.at(i + 2);
-			F4 = vApplicationCurve.at(i + 3);
-
-			// Details
-			if (i >= 4)
-			{
-				*vMeshInserter = ((QUARTER)*F1) - ((THREEQUARTER)*F2) + ((THREEQUARTER)*F3) - ((QUARTER)*F4); // Dj = 1/4Fi - 3/4Fi+1 + 3/4Fi+2 - 1/4Fi+3
-				vMeshInserter += iStepSize;
-			}
-
-			// Coarse Point
-			*vMeshInserter = ((-QUARTER)*F1) + ((THREEQUARTER)*F2) + ((THREEQUARTER)*F3) - ((QUARTER)*F4); // Cj = -1/4Fi + 3/4Fi+1 + 3/4Fi+2 - 1/4Fi+3
-			vMeshInserter += iStepSize;
+			// Cj = -1/4Fi + 3/4Fi+1 + 3/4Fi+2 - 1/4Fi+3
+			terrain.m_vVertices[vInsertIndex] = ((-QUARTER)*vApplicationCurve[i]) + ((THREEQUARTER)*vApplicationCurve[i + 1]) + ((THREEQUARTER)*vApplicationCurve[i + 2]) - ((QUARTER)*vApplicationCurve[i + 3]); 
+			vInsertIndex += iStepSize;
 		}
 
 		// m-3 zero based
-		//i = vApplicationCurve.size() - 4;
+		i = vApplicationCurve.size() - 4;
 		// Apply End Boundary Filters
 		F1 = vApplicationCurve.at(i);
 		F2 = vApplicationCurve.at(i + 1);
 		F3 = vApplicationCurve.at(i + 2);
 		F4 = vApplicationCurve.at(i + 3);
 
-		vMeshInserter = terrain.m_vVertices.begin() + terrain.m_iUSize + vIndex - 3;
-		*vMeshInserter = ((QUARTER)*F1) - ((THREEQUARTER)*F2) + F3 - ((HALF)*F4); // Dj = 1/4Fm-3 - 3/4Fm-2 + Fm-1 - 1/2Fm
-		++vMeshInserter;
+		terrain.m_vVertices[terrain.m_iUSize - 2 + vIndex] = ((-QUARTER)*F1) + ((THREEQUARTER)*F2) + F3 - ((HALF)*F4); // Cj = -1/4Fm-3 + 3/4Fm-2 + Fm-1 -1/2Fm
+		++vInsertIndex;
+		terrain.m_vVertices[terrain.m_iUSize - 1 + vIndex] = F4;
+		/**********End C******************/
 
-		//meshV.push_back(((-QUARTER)*C1) + ((THREEQUARTER)*C2) + ((1)*C3) + ((-HALF)*C4));
-		*vMeshInserter = ((-QUARTER)*F1) + ((THREEQUARTER)*F2) + F3 - ((HALF)*F4); // Cj = -1/4Fm-3 + 3/4Fm-2 + Fm-1 -1/2Fm
-		++vMeshInserter;
-		*vMeshInserter = F4;
-		++vMeshInserter; // Cj+1 == Fm
+		/*************D*******************/
+		F1 = vApplicationCurve[0];
+		F2 = vApplicationCurve[1];
+		F3 = vApplicationCurve[2];
+		F4 = vApplicationCurve[3];
+
+		// Reset Index for Details
+		vInsertIndex = (iStepSize >> 1) + vIndex;
+
+		// Apply Boundary Conditions for Details
+		terrain.m_vVertices[vInsertIndex] = ((-HALF)*F1) + F2 - ((THREEQUARTER)*F3) + ((QUARTER)*F4);			// D1 = -1/2F1 + F2 - 3/4F2 + 1/4F4
+		vInsertIndex += iStepSize;
+		
+		F1 = vApplicationCurve.at(2);
+		F2 = vApplicationCurve.at(3);
+		F3 = vApplicationCurve.at(4);
+		F4 = vApplicationCurve.at(5);
+
+		terrain.m_vVertices[vInsertIndex] = ((-QUARTER)*F1) + ((THREEQUARTER)*F2) - ((THREEQUARTER)*F3) + ((QUARTER)*F4); // D2 = -1/4F3 + 3/4F4 - 3/4F5 + 1/4F6
+		vInsertIndex += iStepSize;
+
+		for (i = 4; i < vApplicationCurve.size() - 5; i += 2)
+		{
+			terrain.m_vVertices[vInsertIndex] = (QUARTER*vApplicationCurve[i]) - (THREEQUARTER*vApplicationCurve[i + 1]) + (THREEQUARTER*vApplicationCurve[i + 2]) - (QUARTER*vApplicationCurve[i + 3]);
+			vInsertIndex += iStepSize;
+		}
+
+		// Dj = 1/4Fm-3 - 3/4Fm-2 + Fm-1 - 1/2Fm
+		i = vApplicationCurve.size() - 4;
+		terrain.m_vVertices[vInsertIndex] = ((QUARTER)*vApplicationCurve[i]) - ((THREEQUARTER)*vApplicationCurve[i+1]) + vApplicationCurve[i+2] - ((HALF)*vApplicationCurve[i+3]);
 
 		// Reset Curve.
 		vApplicationCurve.clear();
@@ -813,7 +818,10 @@ void Terrain::applyTerrain(const Terrain* pTerrain)
 		{
 			// Apply Reverse Subdivision a minimum number of times.
 			for (unsigned int i = 0; i < MIN_BLEND_RS; ++i)
+			{
 				reduce(m_vApplicationMesh);
+				growTerrain();
+			}
 
 			unsigned int iCurrUCoarseSize = m_defaultTerrain.getCoarseUSize();
 			unsigned int iCurrVCoarseSize = m_defaultTerrain.getCoarseVSize();
@@ -825,6 +833,7 @@ void Terrain::applyTerrain(const Terrain* pTerrain)
 			while (iAppUCoarseSize > iCurrUCoarseSize && iAppVCoarseSize > iCurrVCoarseSize)
 			{
 				reduce(m_vApplicationMesh);
+				growTerrain();
 				
 				iAppUCoarseSize = m_vApplicationMesh.getCoarseUSize();
 				iAppVCoarseSize = m_vApplicationMesh.getCoarseVSize();
@@ -841,10 +850,8 @@ void Terrain::applyTerrain(const Terrain* pTerrain)
 			else
 			{
 				// Refine Default terrain to default resolution
-				//while (m_defaultTerrain.m_iExp != 0)
-				//	grow(m_defaultTerrain);
-
-				addDetails(m_defaultTerrain, m_vApplicationMesh.m_iExp);
+				while (m_defaultTerrain.m_iExp < m_vApplicationMesh.m_iExp)
+					reduceTerrain();
 
 				// Force Height Map active
 				if (m_bHeightMapStored)
